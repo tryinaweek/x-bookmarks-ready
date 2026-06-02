@@ -550,6 +550,24 @@
   <p>Turn hundreds of forgotten bookmarks into organized categories, hidden gems, and actionable insights.</p>
   <div class="hero-cta" id="authBox">
     <div class="auth-box card" style="max-width: 380px; margin: 0 auto; text-align: left; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+      
+      <!-- Google Sign In -->
+      <button onclick="handleGoogleLogin()" style="width: 100%; justify-content: center; background: #fff; border: 1px solid #e5e5e5; color: #374151; padding: 10px; border-radius: 8px; font-size: 14px; display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 600; transition: background 0.2s; outline: none; margin-bottom: 16px;" onmouseover="this.style.background='#f9fafb'" onmouseout="this.style.background='#fff'">
+        <svg width="18" height="18" viewBox="0 0 18 18" style="display: block;">
+          <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.844 2.078-1.797 2.717v2.258h2.91c1.702-1.567 2.683-3.874 2.683-6.615z" fill="#4285F4"/>
+          <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.91-2.258c-.806.54-1.837.86-3.046.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+          <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.96H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.04l3.007-2.333z" fill="#FBBC05"/>
+          <path d="M9 3.58c1.32 0 2.505.453 3.44 1.345l2.582-2.58C13.463.89 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+
+      <div style="display: flex; align-items: center; text-align: center; margin: 16px 0; color: #888; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;">
+        <div style="flex: 1; border-bottom: 1px solid #f0f0f0;"></div>
+        <span style="padding: 0 10px;">or</span>
+        <div style="flex: 1; border-bottom: 1px solid #f0f0f0;"></div>
+      </div>
+
       <div class="auth-tabs" style="display: flex; border-bottom: 1px solid #f0f0f0; margin-bottom: 18px;">
         <button class="auth-tab active" onclick="switchAuthTab('login')" style="flex: 1; padding: 8px; background: none; border: none; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid #7c3aed; color: #1a1a1a; outline: none;">Log In</button>
         <button class="auth-tab" onclick="switchAuthTab('signup')" style="flex: 1; padding: 8px; background: none; border: none; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; color: #888; outline: none;">Sign Up</button>
@@ -986,6 +1004,20 @@ function handleSignup() {
     })
     .then((user) => {
        return user.getIdToken();
+    })
+    .then((idToken) => {
+       submitTokenToBackend(idToken);
+    })
+    .catch((error) => {
+       showError(error.message);
+    });
+}
+
+function handleGoogleLogin() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  firebase.auth().signInWithPopup(provider)
+    .then((result) => {
+       return result.user.getIdToken();
     })
     .then((idToken) => {
        submitTokenToBackend(idToken);
