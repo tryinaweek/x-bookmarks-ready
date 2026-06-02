@@ -17,6 +17,21 @@ from openpyxl.styles import Font, PatternFill, Alignment
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 
+# Load environment variables from .env file locally if it exists
+try:
+    dotenv_path = os.path.join(os.path.dirname(__file__), "../.env")
+    if os.path.exists(dotenv_path):
+        with open(dotenv_path, "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#") and "=" in line:
+                    k, v = line.split("=", 1)
+                    k = k.strip()
+                    v = v.strip().strip('"').strip("'")
+                    os.environ[k] = v
+except Exception:
+    pass
+
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 app.secret_key = os.environ.get("SESSION_SECRET", secrets.token_hex(32))
 
@@ -57,7 +72,7 @@ def inject_twitter_status():
 
 CLIENT_ID = os.environ.get("X_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("X_CLIENT_SECRET", "")
-CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
+CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or ""
 
 # Initialize Firebase Admin & Firestore client defensively
 db = None
