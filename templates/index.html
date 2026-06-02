@@ -563,6 +563,7 @@
         <div style="margin-bottom: 18px;">
           <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Password</label>
           <input type="password" id="loginPassword" style="width: 100%; padding: 10px 12px; border: 1px solid #e5e5e5; border-radius: 8px; outline: none; font-size: 14px;" placeholder="••••••••">
+          <a href="#" onclick="handleForgotPassword(event)" style="display: block; text-align: right; font-size: 11px; color: #7c3aed; text-decoration: none; margin-top: 6px; font-weight: 500;">Forgot password?</a>
         </div>
         <button onclick="handleLogin()" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; border-radius: 8px; font-size: 14px;">Log In</button>
       </div>
@@ -991,6 +992,22 @@ function handleSignup() {
     })
     .catch((error) => {
        showError(error.message);
+    });
+}
+
+function handleForgotPassword(event) {
+  event.preventDefault();
+  const email = document.getElementById('loginEmail').value.trim();
+  if (!email) {
+    showError("Please enter your email address in the email field first, then click 'Forgot password?'.");
+    return;
+  }
+  firebase.auth().sendPasswordResetEmail(email)
+    .then(() => {
+      alert("Password reset email sent! Please check your inbox.");
+    })
+    .catch((error) => {
+      showError(error.message);
     });
 }
 
