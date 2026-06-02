@@ -34,33 +34,81 @@ CLIENT_ID = os.environ.get("X_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("X_CLIENT_SECRET", "")
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
 
-# Initialize Firebase Admin
+# Initialize Firebase Admin & Firestore client defensively
+db = None
+startup_error = None
+
 try:
-    firebase_admin.get_app()
-except ValueError:
-    # Check for local service-account.json in the project root folder
-    local_key = os.path.join(os.path.dirname(__file__), "../service-account.json")
-    if os.path.exists(local_key):
-        cred = credentials.Certificate(local_key)
-        firebase_admin.initialize_app(cred)
-    else:
-        firebase_project_id = os.environ.get("FIREBASE_PROJECT_ID")
-        firebase_client_email = os.environ.get("FIREBASE_CLIENT_EMAIL")
-        firebase_private_key = os.environ.get("FIREBASE_PRIVATE_KEY")
-        
-        if firebase_project_id and firebase_client_email and firebase_private_key:
-            formatted_key = firebase_private_key.replace("\\n", "\n")
-            cred = credentials.Certificate({
-                "type": "service_account",
-                "project_id": firebase_project_id,
-                "client_email": firebase_client_email,
-                "private_key": formatted_key,
-            })
+    try:
+        firebase_admin.get_app()
+    except ValueError:
+        local_key = os.path.join(os.path.dirname(__file__), "../service-account.json")
+        if os.path.exists(local_key):
+            cred = credentials.Certificate(local_key)
             firebase_admin.initialize_app(cred)
         else:
-            firebase_admin.initialize_app()
+            firebase_project_id = os.environ.get("FIREBASE_PROJECT_ID")
+            firebase_client_email = os.environ.get("FIREBASE_CLIENT_EMAIL")
+            firebase_private_key = os.environ.get("FIREBASE_PRIVATE_KEY")
+            
+            if firebase_project_id and firebase_client_email and firebase_private_key:
+                formatted_key = firebase_private_key.replace("\\n", "\n").strip()
+                # Remove surrounding quotes if they were mistakenly copied
+                if formatted_key.startswith('"') and formatted_key.endswith('"'):
+                    formatted_key = formatted_key[1:-1].strip()
+                if formatted_key.startswith("'") and formatted_key.endswith("'"):
+                    formatted_key = formatted_key[1:-1].strip()
+                cred = credentials.Certificate({
+                    "type": "service_account",
+                    "project_id": firebase_project_id,
+                    "client_email": firebase_client_email,
+                    "private_key": formatted_key,
+                })
+                firebase_admin.initialize_app(cred)
+            else:
+                missing = []
+                if not firebase_project_id: missing.append("FIREBASE_PROJECT_ID")
+                if not firebase_client_email: missing.append("FIREBASE_CLIENT_EMAIL")
+                if not firebase_private_key: missing.append("FIREBASE_PRIVATE_KEY")
+                raise ValueError(f"Missing required environment variables for Firebase initialization: {', '.join(missing)}")
+    db = firestore.client()
+except Exception as e:
+    import traceback
+    startup_error = {
+        "error": str(e),
+        "traceback": traceback.format_exc()
+    }
 
-db = firestore.client()
+
+@app.before_request
+def check_startup_error():
+    if startup_error:
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>MyBookmarks - Configuration Error</title>
+            <style>
+                body {{ font-family: -apple-system, system-ui; padding: 40px; background: #fef2f2; color: #991b1b; line-height: 1.6; }}
+                .card {{ background: white; border: 1px solid #fee2e2; border-radius: 12px; padding: 32px; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
+                h1 {{ font-size: 24px; font-weight: 700; margin-top: 0; display: flex; align-items: center; gap: 8px; }}
+                pre {{ background: #f8fafc; border: 1px solid #e2e8f0; color: #334155; padding: 16px; border-radius: 8px; font-family: monospace; font-size: 13px; overflow-x: auto; white-space: pre-wrap; }}
+                .badge {{ background: #fee2e2; color: #991b1b; font-size: 11px; padding: 4px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; }}
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <h1><span class="badge">Configuration Error</span> Firebase Initialization Failed</h1>
+                <p>The server failed to connect to Firebase. This usually happens when environment variables are missing or formatted incorrectly in your Vercel project settings.</p>
+                <h3>Error Message:</h3>
+                <pre>{startup_error['error']}</pre>
+                <h3>Traceback Details:</h3>
+                <pre>{startup_error['traceback']}</pre>
+                <p style="color: #475569; font-size: 13px; margin-top: 24px;">Please check your Vercel environment variables and trigger a redeployment once fixed.</p>
+            </div>
+        </body>
+        </html>
+        """, 500
 
 OWNER_X_ID = os.environ.get("OWNER_X_ID", "25914613")  # Your X user ID - full access
 
