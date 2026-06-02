@@ -17,18 +17,43 @@ from openpyxl.styles import Font, PatternFill, Alignment
 import firebase_admin
 from firebase_admin import credentials, firestore, auth
 
-app = Flask(__name__, template_folder="../templates")
+app = Flask(__name__, template_folder="../templates", static_folder="../static")
 app.secret_key = os.environ.get("SESSION_SECRET", secrets.token_hex(32))
 
 @app.context_processor
 def inject_firebase_config():
+    api_key = os.environ.get("FIREBASE_API_KEY", "").strip()
+    if api_key.startswith('"') and api_key.endswith('"'):
+        api_key = api_key[1:-1].strip()
+    if api_key.startswith("'") and api_key.endswith("'"):
+        api_key = api_key[1:-1].strip()
+        
+    project_id = os.environ.get("FIREBASE_PROJECT_ID", "x-bookmark-app").strip()
+    if project_id.startswith('"') and project_id.endswith('"'):
+        project_id = project_id[1:-1].strip()
+    if project_id.startswith("'") and project_id.endswith("'"):
+        project_id = project_id[1:-1].strip()
+
     return {
         "firebase_config": {
-            "apiKey": os.environ.get("FIREBASE_API_KEY", ""),
-            "authDomain": f"{os.environ.get('FIREBASE_PROJECT_ID', 'x-bookmark-app')}.firebaseapp.com",
-            "projectId": os.environ.get("FIREBASE_PROJECT_ID", "x-bookmark-app"),
+            "apiKey": api_key,
+            "authDomain": f"{project_id}.firebaseapp.com",
+            "projectId": project_id,
         }
     }
+
+@app.context_processor
+def inject_twitter_status():
+    db_uid = session.get("db_user_id") or session.get("firebase_uid")
+    twitter_connected = False
+    if db_uid:
+        try:
+            token = get_valid_twitter_token(db_uid)
+            twitter_connected = bool(token)
+        except Exception:
+            pass
+    return dict(twitter_connected=twitter_connected)
+
 
 CLIENT_ID = os.environ.get("X_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("X_CLIENT_SECRET", "")
@@ -329,11 +354,23 @@ def db_save_draft(user_id, tweets, fmt, topic, status="draft"):
 def db_load_drafts(user_id, status=None):
     if not user_id:
         return []
-    query = db.collection("users").document(user_id).collection("drafts").order_by("created_at", direction=firestore.Query.DESCENDING)
-    if status:
-        query = query.where("status", "==", status)
-    docs = query.get()
-    return [doc.to_dict() for doc in docs]
+    # Avoid composite index requirements by sorting/filtering in-memory
+    try:
+        docs = db.collection("users").document(user_id).collection("drafts").get()
+        drafts = []
+        for doc in docs:
+            d = doc.to_dict()
+            # Ensure doc ID is included
+            d["id"] = doc.id
+            if status and d.get("status") != status:
+                continue
+            drafts.append(d)
+        # Sort in memory descending by created_at
+        drafts = sorted(drafts, key=lambda x: x.get("created_at", ""), reverse=True)
+        return drafts
+    except Exception as e:
+        print(f"Error in db_load_drafts: {e}")
+        return []
 
 
 def db_delete_draft(draft_id, user_id):
@@ -1524,121 +1561,37 @@ def compose_schedule():
     return redirect("/calendar")
 
 
-# -- LinkedIn routes -------------------------------------------------------
-
-@app.route("/linkedin")
-def linkedin_page():
-    if not session.get("firebase_uid"):
-        return redirect("/")
-    db_uid = ensure_db_uid()
-    li_drafts = [d for d in (db_load_drafts(db_uid, "draft") or []) if d.get("format") == "linkedin"]
-    return render_template("linkedin.html", connected=True, username=session.get("username", ""),
-                           step="start", saved_drafts=li_drafts[:5])
-
-
-@app.route("/linkedin/ideas", methods=["POST"])
-def linkedin_ideas():
-    if not session.get("firebase_uid"):
-        return redirect("/")
-    db_uid = ensure_db_uid()
-    seed_topic = request.form.get("seed_topic", "").strip() or None
-    ideas = generate_linkedin_ideas(session.get("username", ""), db_uid, seed_topic=seed_topic)
-    li_drafts = [d for d in (db_load_drafts(db_uid, "draft") or []) if d.get("format") == "linkedin"]
-    return render_template("linkedin.html", connected=True, username=session.get("username", ""),
-                           step="ideas", ideas=ideas, seed_topic=seed_topic or "",
-                           saved_drafts=li_drafts[:5])
-
-
-@app.route("/linkedin/brief", methods=["POST"])
-def linkedin_brief():
-    if not session.get("firebase_uid"):
-        return redirect("/")
-    db_uid = ensure_db_uid()
-    title = request.form.get("title", "").strip()
-    angle = request.form.get("angle", "").strip()
-    core_claim = request.form.get("core_claim", "").strip()
-    recommended_hook = request.form.get("recommended_hook", "").strip()
-    custom_topic = request.form.get("custom_topic", "").strip()
-
-    if custom_topic:
-        title = custom_topic
-        angle = custom_topic
-
-    if not title:
-        return redirect("/linkedin")
-
-    idea_context = angle
-    if core_claim:
-        idea_context += f"\nCore claim: {core_claim}"
-    if recommended_hook:
-        idea_context += f"\nSuggested hook: {recommended_hook}"
-
-    brief = generate_linkedin_brief(session.get("username", ""), db_uid, title, idea_context)
-    return render_template("linkedin.html", connected=True, username=session.get("username", ""),
-                           step="brief", brief=brief, topic=title, angle=angle)
-
-
-@app.route("/linkedin/drafts", methods=["POST"])
-def linkedin_drafts():
-    if not session.get("firebase_uid"):
-        return redirect("/")
-    db_uid = ensure_db_uid()
-    topic = request.form.get("topic", "")
-    brief_json = request.form.get("brief", "{}")
-    try:
-        brief = json.loads(brief_json)
-    except json.JSONDecodeError:
-        brief = {}
-
-    drafts = generate_linkedin_drafts(session.get("username", ""), db_uid, brief)
-    return render_template("linkedin.html", connected=True, username=session.get("username", ""),
-                           step="drafts", li_drafts=drafts, topic=topic, brief=brief)
-
-
-@app.route("/linkedin/save", methods=["POST"])
-def linkedin_save():
-    if not session.get("firebase_uid"):
-        return redirect("/")
-    db_uid = ensure_db_uid()
-    post_text = request.form.get("post", "").strip()
-    topic = request.form.get("topic", "")
-    if post_text and db_uid:
-        db_save_draft(db_uid, [post_text], "linkedin", topic)
-    return redirect("/linkedin")
-
-
-@app.route("/linkedin/generate", methods=["POST"])
-def linkedin_generate_direct():
-    if not session.get("firebase_uid"):
-        return redirect("/")
-    db_uid = ensure_db_uid()
-    topic = request.form.get("topic", "").strip()
-    if not topic:
-        return redirect("/linkedin")
-
-    brief = generate_linkedin_brief(session.get("username", ""), db_uid, topic, topic)
-    if not brief:
-        return render_template("linkedin.html", connected=True, username=session.get("username", ""),
-                               step="start", error="Failed to generate brief. Try again.")
-
-    return render_template("linkedin.html", connected=True, username=session.get("username", ""),
-                           step="brief", brief=brief, topic=topic, angle=topic)
-
 
 @app.route("/calendar")
 def calendar_view():
     if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
-    scheduled = db.collection("users").document(db_uid).collection("drafts").where("status", "==", "scheduled").order_by("scheduled_at").get()
-    posted = db.collection("users").document(db_uid).collection("drafts").where("status", "==", "posted").order_by("posted_at", direction=firestore.Query.DESCENDING).limit(10).get()
-    
-    scheduled_list = [d.to_dict() for d in scheduled]
-    posted_list = [d.to_dict() for d in posted]
-    for item in scheduled_list + posted_list:
-        if "id" not in item:
-            # Fallback doc id
-            item["id"] = item.get("id", "")
+    # Avoid composite index requirements by querying simply and sorting/limiting in-memory
+    try:
+        scheduled_docs = db.collection("users").document(db_uid).collection("drafts").where("status", "==", "scheduled").get()
+        scheduled_list = []
+        for doc in scheduled_docs:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            scheduled_list.append(d)
+        scheduled_list = sorted(scheduled_list, key=lambda x: x.get("scheduled_at", ""))
+    except Exception as e:
+        print(f"Error loading scheduled drafts: {e}")
+        scheduled_list = []
+
+    try:
+        posted_docs = db.collection("users").document(db_uid).collection("drafts").where("status", "==", "posted").get()
+        posted_list = []
+        for doc in posted_docs:
+            d = doc.to_dict()
+            d["id"] = doc.id
+            posted_list.append(d)
+        posted_list = sorted(posted_list, key=lambda x: x.get("posted_at", ""), reverse=True)[:10]
+    except Exception as e:
+        print(f"Error loading posted drafts: {e}")
+        posted_list = []
+
     return render_template("calendar.html", connected=True, username=session.get("username", ""),
                            scheduled=scheduled_list, posted=posted_list)
 
@@ -1774,10 +1727,36 @@ def run_cron():
     """Auto-post scheduled tweets. Called by Vercel Cron every 15 min."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    due_docs = db.collection_group("drafts")\
-                 .where("status", "==", "scheduled")\
-                 .where("scheduled_at", "<=", now)\
-                 .get()
+    # Query user-by-user to avoid composite index / collection group index requirements
+    due_docs = []
+    try:
+        users = db.collection("users").get()
+        for user_doc in users:
+            user_id = user_doc.id
+            drafts = db.collection("users").document(user_id).collection("drafts")\
+                       .where("status", "==", "scheduled").get()
+            for draft in drafts:
+                d = draft.to_dict()
+                if d.get("scheduled_at", "") <= now:
+                    # Injected properties expected by downstream processing
+                    class TempDoc:
+                        def __init__(self, doc_ref, data):
+                            self.id = doc_ref.id
+                            self.reference = doc_ref
+                            self._data = data
+                        def to_dict(self):
+                            return self._data
+                    due_docs.append(TempDoc(draft.reference, d))
+    except Exception as e:
+        print(f"Cron user-by-user query failed: {e}. Falling back to collection group query.")
+        try:
+            all_scheduled = db.collection_group("drafts").where("status", "==", "scheduled").get()
+            for doc in all_scheduled:
+                d = doc.to_dict()
+                if d.get("scheduled_at", "") <= now:
+                    due_docs.append(doc)
+        except Exception as ex:
+            print(f"Cron collection group fallback failed: {ex}")
                  
     if not due_docs:
         return json.dumps({"status": "nothing due", "checked_at": now}), 200
