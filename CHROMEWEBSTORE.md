@@ -13,7 +13,9 @@ Sync your X/Twitter Bookmarks directly to your MyBookmarks dashboard in one clic
 **Detailed Description**  
 Save bookmarks on X/Twitter and instantly organize them with AI. 
 
-X-Port is a lightweight companion utility for the MyBookmarks web application. It automates the process of importing your reading lists and saved tweets into your personal database without requiring complex developer API credentials or paying expensive read fees.
+Most people save hundreds of bookmarks into folders and never visit them again. **X-Port** is the Chrome extension companion that breaks this cycle. It lets you import all your scattered bookmarks into your personal MyBookmarks workspace with a single click—no expensive developer API keys required.
+
+Once imported, our AI-powered dashboard parses your bookmarks, automatically grouping them into clear categories, mapping your learning interests over a visual timeline, and flagging stale or dead links to help you keep your digital space clean. Most importantly, it serves as a content engine: it repurposes the knowledge inside your saved bookmarks into fresh tweet ideas, allowing you to compose and publish tweets directly back to X from your dashboard.
 
 Key Features:
 - Direct DOM parsing of your saved Twitter/X bookmarks page.
@@ -28,7 +30,7 @@ How to Use:
 4. Click the "Sync Bookmarks" button in the bottom-right panel to begin downloading and importing.
 
 Privacy Note:
-Your bookmarks data is processed entirely in your browser and sent directly to your self-hosted or personal web app database. We do not host central databases for your bookmarks, nor do we track your activity.
+Your bookmarks data is processed entirely in your browser and sent directly to your personal web app database. We do not host central databases for your bookmarks, nor do we track your activity.
 
 **Category**  
 Productivity
