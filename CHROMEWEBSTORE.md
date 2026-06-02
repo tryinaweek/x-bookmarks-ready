@@ -1,11 +1,11 @@
-# Chrome Web Store Listing — MyBookmarks Scraper Helper
+# Chrome Web Store Listing — X-Port: AI Bookmark Sync
 
 > Last Updated: 2026-06-02
 
 ## Store Listing
 
 **Extension Name**  
-MyBookmarks Scraper Helper
+X-Port: AI Bookmark Sync
 
 **Short Description**  
 Sync your X/Twitter Bookmarks directly to your MyBookmarks dashboard in one click without developer API keys.
@@ -13,7 +13,7 @@ Sync your X/Twitter Bookmarks directly to your MyBookmarks dashboard in one clic
 **Detailed Description**  
 Save bookmarks on X/Twitter and instantly organize them with AI. 
 
-MyBookmarks Scraper Helper is a lightweight companion utility for the MyBookmarks web application. It automates the process of importing your reading lists and saved tweets into your personal database without requiring complex developer API credentials or paying expensive read fees.
+X-Port is a lightweight companion utility for the MyBookmarks web application. It automates the process of importing your reading lists and saved tweets into your personal database without requiring complex developer API credentials or paying expensive read fees.
 
 Key Features:
 - Direct DOM parsing of your saved Twitter/X bookmarks page.
