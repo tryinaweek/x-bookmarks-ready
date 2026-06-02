@@ -63,6 +63,7 @@ try:
                     "project_id": firebase_project_id,
                     "client_email": firebase_client_email,
                     "private_key": formatted_key,
+                    "token_uri": "https://oauth2.googleapis.com/token",
                 })
                 firebase_admin.initialize_app(cred)
             else:
