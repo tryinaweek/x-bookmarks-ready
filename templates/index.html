@@ -501,6 +501,16 @@
     }
     .action-ref:hover { background: #e8d5ff; }
   </style>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-auth-compat.js"></script>
+  <script>
+    const firebaseConfig = {
+      apiKey: "{{ firebase_config.apiKey }}",
+      authDomain: "{{ firebase_config.authDomain }}",
+      projectId: "{{ firebase_config.projectId }}"
+    };
+    firebase.initializeApp(firebaseConfig);
+  </script>
 </head>
 <body{% if connected %} class="dashboard-bg"{% endif %}>
 
@@ -523,16 +533,14 @@
 {% endif %}
 
 {% if not configured %}
-<div class="container">
-  <div class="card">
-    <h2>Setup Required</h2>
-    <div class="warning">
-      Environment variables not configured. Set <code>X_CLIENT_ID</code> and <code>X_CLIENT_SECRET</code> in your Vercel project settings.
-    </div>
+<div class="container" style="margin-top: 20px; max-width: 600px;">
+  <div class="warning" style="background: #fffbeb; border: 1px solid #fef3c7; color: #b45309; padding: 12px 16px; border-radius: 8px; font-size: 13px; text-align: center;">
+    <strong>Optional setup note</strong>: X/Twitter OAuth keys are not configured. Standard X OAuth sync and direct posting are disabled. However, you can log in below and sync bookmarks using the Chrome Extension.
   </div>
 </div>
+{% endif %}
 
-{% elif not connected %}
+{% if not connected %}
 <!-- ==================== LANDING PAGE ==================== -->
 
 <!-- Hero -->
@@ -540,14 +548,45 @@
   <div class="hero-badge">AI-Powered Bookmark Intelligence</div>
   <h1>You saved them for a reason.<br>Let's find out <em>why.</em></h1>
   <p>Turn hundreds of forgotten bookmarks into organized categories, hidden gems, and actionable insights.</p>
-  <div class="hero-cta">
-    <form method="POST" action="/connect">
-      <button type="submit" class="btn btn-primary-lg">
-        Connect your X account
-      </button>
-    </form>
+  <div class="hero-cta" id="authBox">
+    <div class="auth-box card" style="max-width: 380px; margin: 0 auto; text-align: left; background: #fff; border: 1px solid #e5e5e5; border-radius: 12px; padding: 24px; box-shadow: 0 4px 20px rgba(0,0,0,0.05);">
+      <div class="auth-tabs" style="display: flex; border-bottom: 1px solid #f0f0f0; margin-bottom: 18px;">
+        <button class="auth-tab active" onclick="switchAuthTab('login')" style="flex: 1; padding: 8px; background: none; border: none; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid #7c3aed; color: #1a1a1a; outline: none;">Log In</button>
+        <button class="auth-tab" onclick="switchAuthTab('signup')" style="flex: 1; padding: 8px; background: none; border: none; font-size: 14px; font-weight: 600; cursor: pointer; border-bottom: 2px solid transparent; color: #888; outline: none;">Sign Up</button>
+      </div>
+      
+      <div id="loginForm">
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Email</label>
+          <input type="email" id="loginEmail" style="width: 100%; padding: 10px 12px; border: 1px solid #e5e5e5; border-radius: 8px; outline: none; font-size: 14px;" placeholder="you@example.com">
+        </div>
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Password</label>
+          <input type="password" id="loginPassword" style="width: 100%; padding: 10px 12px; border: 1px solid #e5e5e5; border-radius: 8px; outline: none; font-size: 14px;" placeholder="••••••••">
+        </div>
+        <button onclick="handleLogin()" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; border-radius: 8px; font-size: 14px;">Log In</button>
+      </div>
+      
+      <div id="signupForm" style="display: none;">
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Name</label>
+          <input type="text" id="signupName" style="width: 100%; padding: 10px 12px; border: 1px solid #e5e5e5; border-radius: 8px; outline: none; font-size: 14px;" placeholder="Alex Johnson">
+        </div>
+        <div style="margin-bottom: 14px;">
+          <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Email</label>
+          <input type="email" id="signupEmail" style="width: 100%; padding: 10px 12px; border: 1px solid #e5e5e5; border-radius: 8px; outline: none; font-size: 14px;" placeholder="you@example.com">
+        </div>
+        <div style="margin-bottom: 18px;">
+          <label style="display: block; font-size: 11px; font-weight: 600; margin-bottom: 4px; color: #666; text-transform: uppercase; letter-spacing: 0.5px;">Password</label>
+          <input type="password" id="signupPassword" style="width: 100%; padding: 10px 12px; border: 1px solid #e5e5e5; border-radius: 8px; outline: none; font-size: 14px;" placeholder="••••••••">
+        </div>
+        <button onclick="handleSignup()" class="btn btn-ai" style="width: 100%; justify-content: center; padding: 12px; border-radius: 8px; font-size: 14px;">Sign Up</button>
+      </div>
+      
+      <div id="authError" style="margin-top: 14px; color: #e0245e; font-size: 13px; text-align: center; display: none;"></div>
+    </div>
   </div>
-  <p class="hero-note">Start with a free analysis. No credit card required.</p>
+  <p class="hero-note" style="margin-top: 18px;">Sign up to get your free dashboard. No credit card required.</p>
 </section>
 
 <!-- Features -->
@@ -627,11 +666,7 @@
 <section class="final-cta">
   <h2>Ready to unlock your bookmarks?</h2>
   <p>Connect, load, and get your first AI analysis free.</p>
-  <form method="POST" action="/connect">
-    <button type="submit" class="btn btn-primary-lg">
-      Connect your X account
-    </button>
-  </form>
+  <a href="#authBox" class="btn btn-primary-lg">Get Started Now</a>
 </section>
 
 <footer>MyBookmarks &mdash; AI-powered bookmark intelligence</footer>
@@ -892,6 +927,97 @@ function clearFilter() {
   if (pills.length > 0) pills[0].classList.add('active');
 }
 
+// -- Firebase Auth JS handlers --
+function switchAuthTab(type) {
+  const tabs = document.querySelectorAll('.auth-tab');
+  if (type === 'login') {
+    tabs[0].classList.add('active');
+    tabs[0].style.borderBottomColor = '#7c3aed';
+    tabs[0].style.color = '#1a1a1a';
+    tabs[1].classList.remove('active');
+    tabs[1].style.borderBottomColor = 'transparent';
+    tabs[1].style.color = '#888';
+    document.getElementById('loginForm').style.display = 'block';
+    document.getElementById('signupForm').style.display = 'none';
+  } else {
+    tabs[1].classList.add('active');
+    tabs[1].style.borderBottomColor = '#7c3aed';
+    tabs[1].style.color = '#1a1a1a';
+    tabs[0].classList.remove('active');
+    tabs[0].style.borderBottomColor = 'transparent';
+    tabs[0].style.color = '#888';
+    document.getElementById('signupForm').style.display = 'block';
+    document.getElementById('loginForm').style.display = 'none';
+  }
+  document.getElementById('authError').style.display = 'none';
+}
+
+function handleLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const password = document.getElementById('loginPassword').value;
+  if (!email || !password) {
+    showError("Please enter your email and password.");
+    return;
+  }
+  firebase.auth().signInWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+       return userCredential.user.getIdToken();
+    })
+    .then((idToken) => {
+       submitTokenToBackend(idToken);
+    })
+    .catch((error) => {
+       showError(error.message);
+    });
+}
+
+function handleSignup() {
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  if (!name || !email || !password) {
+    showError("Please fill out all fields.");
+    return;
+  }
+  firebase.auth().createUserWithEmailAndPassword(email, password)
+    .then((userCredential) => {
+       return userCredential.user.updateProfile({ displayName: name }).then(() => userCredential.user);
+    })
+    .then((user) => {
+       return user.getIdToken();
+    })
+    .then((idToken) => {
+       submitTokenToBackend(idToken);
+    })
+    .catch((error) => {
+       showError(error.message);
+    });
+}
+
+function showError(msg) {
+  const errDiv = document.getElementById('authError');
+  errDiv.textContent = msg;
+  errDiv.style.display = 'block';
+}
+
+function submitTokenToBackend(idToken) {
+  fetch('/login', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ idToken: idToken })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      window.location.href = '/';
+    } else {
+      showError(data.message || "Failed to log in.");
+    }
+  })
+  .catch(err => {
+    showError("Connection error: " + err);
+  });
+}
 </script>
 </body>
 </html>

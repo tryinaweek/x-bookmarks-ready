@@ -1,0 +1,45 @@
+{
+  "manifest_version": 3,
+  "name": "MyBookmarks Scraper Helper",
+  "version": "1.0.0",
+  "description": "Seamlessly sync your X/Twitter Bookmarks directly to your MyBookmarks dashboard.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://twitter.com/*",
+    "https://x.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://twitter.com/*",
+        "https://x.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "http://localhost:5001/*",
+        "http://127.0.0.1:5001/*",
+        "https://*.vercel.app/*"
+      ],
+      "js": ["dashboard-helper.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost/*",
+      "http://127.0.0.1/*",
+      "https://*.vercel.app/*"
+    ]
+  }
+}

@@ -5,7 +5,7 @@ import hashlib
 import base64
 import urllib.parse
 import io
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 import requests as req_lib
 import anthropic
@@ -14,14 +14,53 @@ from flask import Flask, render_template, request, redirect, session, send_file
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 
+import firebase_admin
+from firebase_admin import credentials, firestore, auth
+
 app = Flask(__name__, template_folder="../templates")
 app.secret_key = os.environ.get("SESSION_SECRET", secrets.token_hex(32))
+
+@app.context_processor
+def inject_firebase_config():
+    return {
+        "firebase_config": {
+            "apiKey": os.environ.get("FIREBASE_API_KEY", ""),
+            "authDomain": f"{os.environ.get('FIREBASE_PROJECT_ID', 'x-bookmark-app')}.firebaseapp.com",
+            "projectId": os.environ.get("FIREBASE_PROJECT_ID", "x-bookmark-app"),
+        }
+    }
 
 CLIENT_ID = os.environ.get("X_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("X_CLIENT_SECRET", "")
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY", "")
-SUPABASE_URL = os.environ.get("SUPABASE_URL", "")
-SUPABASE_KEY = os.environ.get("SUPABASE_KEY", "")
+
+# Initialize Firebase Admin
+try:
+    firebase_admin.get_app()
+except ValueError:
+    # Check for local service-account.json in the project root folder
+    local_key = os.path.join(os.path.dirname(__file__), "../service-account.json")
+    if os.path.exists(local_key):
+        cred = credentials.Certificate(local_key)
+        firebase_admin.initialize_app(cred)
+    else:
+        firebase_project_id = os.environ.get("FIREBASE_PROJECT_ID")
+        firebase_client_email = os.environ.get("FIREBASE_CLIENT_EMAIL")
+        firebase_private_key = os.environ.get("FIREBASE_PRIVATE_KEY")
+        
+        if firebase_project_id and firebase_client_email and firebase_private_key:
+            formatted_key = firebase_private_key.replace("\\n", "\n")
+            cred = credentials.Certificate({
+                "type": "service_account",
+                "project_id": firebase_project_id,
+                "client_email": firebase_client_email,
+                "private_key": formatted_key,
+            })
+            firebase_admin.initialize_app(cred)
+        else:
+            firebase_admin.initialize_app()
+
+db = firestore.client()
 
 OWNER_X_ID = os.environ.get("OWNER_X_ID", "25914613")  # Your X user ID - full access
 
@@ -29,85 +68,110 @@ AUTH_URL = "https://twitter.com/i/oauth2/authorize"
 TOKEN_URL = "https://api.twitter.com/2/oauth2/token"
 SCOPES = "bookmark.read tweet.read tweet.write users.read offline.access"
 
-SB_HEADERS = {
-    "apikey": SUPABASE_KEY,
-    "Authorization": f"Bearer {SUPABASE_KEY}",
-    "Content-Type": "application/json",
-    "Prefer": "return=representation",
-} if SUPABASE_KEY else {}
+
+# -- DB helpers (Cloud Firestore) ----------------------------------------------
+
+def get_valid_twitter_token(user_id):
+    """Checks and retrieves a valid Twitter access token, refreshing it if expired."""
+    if not user_id:
+        return None
+    user_ref = db.collection("users").document(user_id)
+    user_doc = user_ref.get()
+    if not user_doc.exists:
+        return None
+    user_data = user_doc.to_dict()
+    
+    access_token = user_data.get("access_token")
+    refresh_token = user_data.get("refresh_token")
+    expires_at = user_data.get("expires_at", 0)
+    
+    # If not expired, return access token
+    if access_token and datetime.now(timezone.utc).timestamp() < expires_at:
+        return access_token
+        
+    # If expired and we have a refresh token, refresh it
+    if refresh_token:
+        try:
+            r = req_lib.post(TOKEN_URL, auth=(CLIENT_ID, CLIENT_SECRET),
+                              data={"grant_type": "refresh_token", "refresh_token": refresh_token})
+            data = r.json()
+            if "access_token" in data:
+                new_access = data["access_token"]
+                new_refresh = data.get("refresh_token", refresh_token)
+                new_expires_at = datetime.now(timezone.utc).timestamp() + data.get("expires_in", 7200) - 60
+                
+                user_ref.update({
+                    "access_token": new_access,
+                    "refresh_token": new_refresh,
+                    "expires_at": new_expires_at,
+                    "updated_at": datetime.now(timezone.utc).isoformat()
+                })
+                return new_access
+        except Exception as e:
+            print(f"Token refresh failed for user {user_id}: {e}")
+            
+    return access_token
 
 
-# -- DB helpers (direct REST) ----------------------------------------------
-
-def _sb_get(table, params=""):
-    if not SUPABASE_URL:
-        return []
-    r = req_lib.get(f"{SUPABASE_URL}/rest/v1/{table}?{params}", headers=SB_HEADERS)
-    return r.json() if r.status_code == 200 else []
-
-
-def _sb_post(table, data):
-    if not SUPABASE_URL:
-        return []
-    r = req_lib.post(f"{SUPABASE_URL}/rest/v1/{table}", headers=SB_HEADERS, json=data)
-    return r.json() if r.status_code in (200, 201) else []
-
-
-def _sb_patch(table, data, params):
-    if not SUPABASE_URL:
-        return []
-    r = req_lib.patch(f"{SUPABASE_URL}/rest/v1/{table}?{params}", headers=SB_HEADERS, json=data)
-    return r.json() if r.status_code == 200 else []
-
-
-def _sb_delete(table, params):
-    if not SUPABASE_URL:
-        return
-    req_lib.delete(f"{SUPABASE_URL}/rest/v1/{table}?{params}", headers=SB_HEADERS)
-
-
-def db_get_or_create_user(x_user_id, username, name, access_token):
-    existing = _sb_get("users", f"x_user_id=eq.{x_user_id}&select=id")
-    if existing:
-        _sb_patch("users", {
-            "username": username, "name": name,
-            "access_token": access_token, "updated_at": datetime.now(timezone.utc).isoformat(),
-        }, f"x_user_id=eq.{x_user_id}")
-        return existing[0]["id"]
-    result = _sb_post("users", {
-        "x_user_id": str(x_user_id), "username": username,
-        "name": name, "access_token": access_token,
-    })
-    return result[0]["id"] if result else None
+def db_get_or_create_user(x_user_id, username, name, access_token, refresh_token=None):
+    firebase_uid = session.get("firebase_uid")
+    if not firebase_uid:
+        # Fallback to finding user by x_user_id
+        docs = db.collection("users").where("x_user_id", "==", str(x_user_id)).limit(1).get()
+        if docs:
+            firebase_uid = docs[0].id
+        else:
+            firebase_uid = f"x_{x_user_id}"
+            
+    user_ref = db.collection("users").document(firebase_uid)
+    doc = user_ref.get()
+    
+    data = {
+        "x_user_id": str(x_user_id),
+        "username": username,
+        "name": name,
+        "access_token": access_token,
+        "updated_at": datetime.now(timezone.utc).isoformat(),
+    }
+    if refresh_token:
+        data["refresh_token"] = refresh_token
+        
+    if doc.exists:
+        user_ref.update(data)
+    else:
+        data["created_at"] = datetime.now(timezone.utc).isoformat()
+        user_ref.set(data)
+    return firebase_uid
 
 
 def db_save_cache(table, user_id, data, last_id=None):
     if not user_id:
         return
-    _sb_delete(table, f"user_id=eq.{user_id}")
-    row = {"user_id": user_id, "data": json.dumps(data)}
+    cache_ref = db.collection("users").document(user_id).collection("caches").document(table)
+    row = {
+        "data": data,
+        "fetched_at": datetime.now(timezone.utc).isoformat()
+    }
     if last_id:
         row["last_id"] = last_id
-    _sb_post(table, row)
+    cache_ref.set(row)
 
 
 def db_load_cache_full(table, user_id):
     if not user_id:
         return None, None, None
-    rows = _sb_get(table, f"user_id=eq.{user_id}&select=data,last_id,fetched_at&order=fetched_at.desc&limit=1")
-    if rows:
-        row = rows[0]
-        data = row.get("data")
-        if isinstance(data, str):
-            data = json.loads(data)
-        return data, row.get("last_id"), row.get("fetched_at")
+    doc = db.collection("users").document(user_id).collection("caches").document(table).get()
+    if doc.exists:
+        d = doc.to_dict()
+        return d.get("data"), d.get("last_id"), d.get("fetched_at")
     return None, None, None
 
 
 def db_merge_cache(table, user_id, new_data, last_id):
     existing, _, _ = db_load_cache_full(table, user_id)
     if existing:
-        merged = new_data + [item for item in existing if item["id"] not in {n["id"] for n in new_data}]
+        existing_ids = {item["id"] for item in existing}
+        merged = new_data + [item for item in existing if item["id"] not in existing_ids]
     else:
         merged = new_data
     db_save_cache(table, user_id, merged, last_id)
@@ -117,54 +181,54 @@ def db_merge_cache(table, user_id, new_data, last_id):
 def db_save_analysis(user_id, analysis_type, data):
     if not user_id:
         return
-    _sb_delete("analyses", f"user_id=eq.{user_id}&type=eq.{analysis_type}")
-    _sb_post("analyses", {"user_id": user_id, "type": analysis_type, "data": json.dumps(data)})
+    ref = db.collection("users").document(user_id).collection("analyses").document(analysis_type)
+    ref.set({
+        "data": data,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
 
 
 def db_load_analysis(user_id, analysis_type):
     if not user_id:
         return None
-    rows = _sb_get("analyses", f"user_id=eq.{user_id}&type=eq.{analysis_type}&select=data&order=created_at.desc&limit=1")
-    if rows:
-        data = rows[0].get("data")
-        return json.loads(data) if isinstance(data, str) else data
+    doc = db.collection("users").document(user_id).collection("analyses").document(analysis_type).get()
+    if doc.exists:
+        return doc.to_dict().get("data")
     return None
 
 
 def db_save_suggestions(user_id, data):
     if not user_id:
         return
-    _sb_delete("suggestions", f"user_id=eq.{user_id}")
-    _sb_post("suggestions", {"user_id": user_id, "data": json.dumps(data)})
+    ref = db.collection("users").document(user_id).collection("suggestions").document("current")
+    ref.set({
+        "data": data,
+        "generated_at": datetime.now(timezone.utc).isoformat()
+    })
 
 
 def db_load_suggestions(user_id):
     if not user_id:
         return None
-    rows = _sb_get("suggestions", f"user_id=eq.{user_id}&select=data&order=generated_at.desc&limit=1")
-    if rows:
-        data = rows[0].get("data")
-        return json.loads(data) if isinstance(data, str) else data
+    doc = db.collection("users").document(user_id).collection("suggestions").document("current").get()
+    if doc.exists:
+        return doc.to_dict().get("data")
     return None
 
 
 def db_save_profile(user_id, data):
     if not user_id:
         return
-    existing = _sb_get("user_profile", f"user_id=eq.{user_id}&select=id")
+    user_ref = db.collection("users").document(user_id)
     data["updated_at"] = datetime.now(timezone.utc).isoformat()
-    if existing:
-        _sb_patch("user_profile", data, f"user_id=eq.{user_id}")
-    else:
-        data["user_id"] = user_id
-        _sb_post("user_profile", data)
+    user_ref.update(data)
 
 
 def db_load_profile(user_id):
     if not user_id:
         return None
-    rows = _sb_get("user_profile", f"user_id=eq.{user_id}&limit=1")
-    return rows[0] if rows else None
+    doc = db.collection("users").document(user_id).get()
+    return doc.to_dict() if doc.exists else None
 
 
 def get_voice_context(user_id):
@@ -200,34 +264,42 @@ def get_voice_context(user_id):
 def db_save_draft(user_id, tweets, fmt, topic, status="draft"):
     if not user_id:
         return None
-    result = _sb_post("drafts", {
-        "user_id": user_id, "tweets": json.dumps(tweets), "format": fmt,
-        "topic": topic, "status": status,
+    draft_ref = db.collection("users").document(user_id).collection("drafts").document()
+    draft_id = draft_ref.id
+    draft_ref.set({
+        "id": draft_id,
+        "tweets": tweets,
+        "format": fmt,
+        "topic": topic,
+        "status": status,
+        "created_at": datetime.now(timezone.utc).isoformat()
     })
-    return result[0]["id"] if result else None
+    return draft_id
 
 
 def db_load_drafts(user_id, status=None):
     if not user_id:
         return []
-    params = f"user_id=eq.{user_id}&order=created_at.desc"
+    query = db.collection("users").document(user_id).collection("drafts").order_by("created_at", direction=firestore.Query.DESCENDING)
     if status:
-        params += f"&status=eq.{status}"
-    rows = _sb_get("drafts", params)
-    for row in rows:
-        if isinstance(row.get("tweets"), str):
-            row["tweets"] = json.loads(row["tweets"])
-    return rows
+        query = query.where("status", "==", status)
+    docs = query.get()
+    return [doc.to_dict() for doc in docs]
 
 
 def db_delete_draft(draft_id, user_id):
-    _sb_delete("drafts", f"id=eq.{draft_id}&user_id=eq.{user_id}")
+    if not user_id or not draft_id:
+        return
+    db.collection("users").document(user_id).collection("drafts").document(draft_id).delete()
 
 
 def db_mark_posted(draft_id, user_id):
-    _sb_patch("drafts", {
-        "status": "posted", "posted_at": datetime.now(timezone.utc).isoformat(),
-    }, f"id=eq.{draft_id}&user_id=eq.{user_id}")
+    if not user_id or not draft_id:
+        return
+    db.collection("users").document(user_id).collection("drafts").document(draft_id).update({
+        "status": "posted",
+        "posted_at": datetime.now(timezone.utc).isoformat()
+    })
 
 
 # -- X API helpers ---------------------------------------------------------
@@ -258,7 +330,7 @@ def get_me(token):
 
 
 def is_owner():
-    return str(session.get("user_id", "")) == str(OWNER_X_ID)
+    return str(session.get("firebase_uid", "")) == str(OWNER_X_ID) or str(session.get("user_id", "")) == str(OWNER_X_ID)
 
 
 def fetch_bookmarks_delta(token, user_id, since_id=None, max_items=None):
@@ -361,7 +433,7 @@ FORMATTING_RULES = """STRICT FORMATTING RULES:
 def _call_claude(prompt, max_tokens=4096):
     client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
     message = client.messages.create(
-        model="claude-sonnet-4-20250514", max_tokens=max_tokens,
+        model="claude-3-5-sonnet-latest", max_tokens=max_tokens,
         messages=[{"role": "user", "content": prompt}],
     )
     try:
@@ -968,35 +1040,57 @@ def ensure_db_uid():
     db_uid = session.get("db_user_id")
     if db_uid:
         return db_uid
-    x_uid = session.get("user_id")
-    if not x_uid or not SUPABASE_URL:
-        return None
-    try:
-        existing = _sb_get("users", f"x_user_id=eq.{x_uid}&select=id")
-        if existing:
-            db_uid = existing[0]["id"]
-            session["db_user_id"] = db_uid
-            return db_uid
-        uname = session.get("username", "")
-        name = session.get("name", "")
-        token = session.get("access_token", "")
-        db_uid = db_get_or_create_user(x_uid, uname, name, token)
-        session["db_user_id"] = db_uid
-        return db_uid
-    except Exception:
-        return None
+    firebase_uid = session.get("firebase_uid")
+    if firebase_uid:
+        session["db_user_id"] = firebase_uid
+        return firebase_uid
+    return None
 
 
 # -- routes ----------------------------------------------------------------
+
+@app.route("/login", methods=["POST"])
+def login():
+    """Verify client-side Firebase Auth ID token and set Flask session."""
+    data = request.json or {}
+    id_token = data.get("idToken")
+    if not id_token:
+        return json.dumps({"status": "error", "message": "Missing ID token"}), 400
+    try:
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token["uid"]
+        session["firebase_uid"] = uid
+        session["db_user_id"] = uid
+        session["email"] = decoded_token.get("email")
+        
+        # Load user context from Firestore if it exists
+        user_doc = db.collection("users").document(uid).get()
+        if user_doc.exists:
+            ud = user_doc.to_dict()
+            session["username"] = ud.get("username", decoded_token.get("name", "User"))
+            session["access_token"] = ud.get("access_token")
+        else:
+            session["username"] = decoded_token.get("name", "User")
+            session["access_token"] = None
+            
+        return json.dumps({"status": "success", "uid": uid}), 200
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}), 401
+
 
 @app.route("/")
 def index():
     """Dashboard - unified home page."""
     configured = bool(CLIENT_ID and CLIENT_SECRET)
-    if not session.get("access_token"):
+    firebase_uid = session.get("firebase_uid")
+    if not firebase_uid:
         return render_template("index.html", configured=configured, connected=False)
 
     db_uid = ensure_db_uid()
+    
+    # Check if Twitter is connected by checking for valid token
+    token = get_valid_twitter_token(db_uid)
+    twitter_connected = bool(token)
 
     # Load all cached data
     bm_data, bm_last_id, bm_fetched = (None, None, None)
@@ -1013,7 +1107,10 @@ def index():
     drafts = _safe_db(db_load_drafts, db_uid, "draft") or []
 
     return render_template("dashboard.html",
-        connected=True, username=session.get("username", ""),
+        connected=True, 
+        twitter_connected=twitter_connected, 
+        configured=configured,
+        username=session.get("username", "User"),
         bookmarks=bm_data, bookmarks_fetched=bm_fetched,
         bookmarks_count=len(bm_data) if bm_data else 0,
         tweets=tw_data, tweets_fetched=tw_fetched,
@@ -1047,30 +1144,84 @@ def callback():
     except Exception as e:
         return render_template("index.html", configured=True, error=f"Token exchange error: {e}")
     token = token_data.get("access_token")
+    refresh_token = token_data.get("refresh_token")
+    expires_in = token_data.get("expires_in", 7200)
     if not token:
         return render_template("index.html", configured=True, error=f"Token error: {token_data}")
+        
     session["access_token"] = token
     try:
         uid, uname, name = get_me(token)
     except Exception as e:
         return render_template("index.html", configured=True, error=f"Failed to get user: {e}")
+        
     session["user_id"] = uid
     session["username"] = uname
     session["name"] = name
+    
     try:
-        db_uid = db_get_or_create_user(uid, uname, name, token)
+        db_uid = db_get_or_create_user(uid, uname, name, token, refresh_token)
+        expires_at = datetime.now(timezone.utc).timestamp() + expires_in - 60
+        db.collection("users").document(db_uid).update({
+            "expires_at": expires_at
+        })
         session["db_user_id"] = db_uid
-    except Exception:
-        session["db_user_id"] = None
+    except Exception as e:
+        print(f"Error mapping callback user: {e}")
+        session["db_user_id"] = session.get("firebase_uid") or uid
+        
     return redirect("/")
+
+
+@app.route("/api/extension/sync", methods=["POST"])
+def extension_sync():
+    """Endpoint for Chrome Extension to upload scraped bookmarks."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return json.dumps({"status": "error", "message": "Missing or invalid authorization header"}), 401
+    
+    id_token = auth_header.split("Bearer ")[1]
+    try:
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token["uid"]
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Token verification failed: {e}"}), 401
+        
+    data = request.json or {}
+    bookmarks = data.get("bookmarks", [])
+    
+    if not bookmarks:
+        return json.dumps({"status": "success", "count": 0, "total": 0}), 200
+        
+    try:
+        existing_data, _, _ = db_load_cache_full("bookmarks_cache", uid)
+        if existing_data:
+            existing_ids = {item["id"] for item in existing_data}
+            new_bookmarks = [item for item in bookmarks if item["id"] not in existing_ids]
+            merged = new_bookmarks + existing_data
+        else:
+            merged = bookmarks
+            
+        latest_id = merged[0]["id"] if merged else None
+        db_save_cache("bookmarks_cache", uid, merged, latest_id)
+        
+        return json.dumps({"status": "success", "count": len(bookmarks), "total": len(merged)}), 200
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}), 500
 
 
 @app.route("/sync", methods=["POST"])
 def sync():
     """Delta sync - fetches only new bookmarks and tweets."""
-    token = session.get("access_token")
-    uid = session.get("user_id")
     db_uid = ensure_db_uid()
+    token = get_valid_twitter_token(db_uid)
+    
+    user_doc = db.collection("users").document(db_uid).get()
+    if not user_doc.exists:
+        return redirect("/")
+    user_data = user_doc.to_dict()
+    uid = user_data.get("x_user_id")
+    
     if not token or not uid:
         return redirect("/")
 
@@ -1117,7 +1268,7 @@ def sync():
 
 @app.route("/bookmarks")
 def bookmarks_view():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     bookmarks, _, fetched = (None, None, None)
@@ -1132,7 +1283,7 @@ def bookmarks_view():
 
 @app.route("/bookmarks/analyze", methods=["POST"])
 def bookmarks_analyze():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     bookmarks, _, fetched = db_load_cache_full("bookmarks_cache", db_uid)
@@ -1148,7 +1299,7 @@ def bookmarks_analyze():
 
 @app.route("/bookmarks/download", methods=["POST"])
 def bookmarks_download():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     bookmarks, _, _ = db_load_cache_full("bookmarks_cache", db_uid)
@@ -1162,7 +1313,7 @@ def bookmarks_download():
 
 @app.route("/tweets")
 def tweets_view():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     tweets, _, fetched = (None, None, None)
@@ -1177,7 +1328,7 @@ def tweets_view():
 
 @app.route("/tweets/analyze", methods=["POST"])
 def tweets_analyze():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     tweets, _, fetched = db_load_cache_full("tweets_cache", db_uid)
@@ -1193,7 +1344,7 @@ def tweets_analyze():
 
 @app.route("/compose")
 def compose():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     suggestions = _safe_db(db_load_suggestions, db_uid)
@@ -1207,7 +1358,7 @@ def compose():
 
 @app.route("/compose/suggestions", methods=["POST"])
 def compose_suggestions():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     suggestions = generate_smart_suggestions(session.get("username", ""), db_uid)
@@ -1220,7 +1371,7 @@ def compose_suggestions():
 
 @app.route("/compose/generate", methods=["POST"])
 def compose_generate():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     idea = request.form.get("idea", "").strip()
     format_type = request.form.get("format", "tweet")
@@ -1237,7 +1388,7 @@ def compose_generate():
 
 @app.route("/compose/save", methods=["POST"])
 def compose_save():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     tweets_json = request.form.get("tweets", "[]")
@@ -1249,14 +1400,6 @@ def compose_save():
         tweets = []
     if not tweets:
         return redirect("/compose")
-    if not db_uid:
-        # Try to recover db_user_id from session user_id
-        x_uid = session.get("user_id")
-        if x_uid and sb:
-            existing = sb.table("users").select("id").eq("x_user_id", x_uid).execute()
-            if existing.data:
-                db_uid = existing.data[0]["id"]
-                session["db_user_id"] = db_uid
     try:
         db_save_draft(db_uid, tweets, fmt, topic)
     except Exception as e:
@@ -1267,15 +1410,16 @@ def compose_save():
 
 @app.route("/compose/delete/<draft_id>", methods=["POST"])
 def compose_delete(draft_id):
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
-    _safe_db(db_delete_draft, draft_id, session.get("db_user_id"))
+    db_delete_draft(draft_id, session.get("db_user_id"))
     return redirect("/compose")
 
 
 @app.route("/compose/post", methods=["POST"])
 def compose_post():
-    token = session.get("access_token")
+    db_uid = ensure_db_uid()
+    token = get_valid_twitter_token(db_uid)
     if not token:
         return redirect("/")
     tweets_json = request.form.get("tweets", "[]")
@@ -1301,7 +1445,7 @@ def compose_post():
             return render_template("compose.html", connected=True, username=session.get("username", ""),
                                    error=f"Post failed: {data}", drafts=tweets)
     if draft_id:
-        _safe_db(db_mark_posted, draft_id, session.get("db_user_id"))
+        db_mark_posted(draft_id, db_uid)
     first_id = posted[0] if posted else ""
     return render_template("compose.html", connected=True, username=session.get("username", ""),
                            success=True, posted_url=f"https://twitter.com/{session.get('username', '')}/status/{first_id}",
@@ -1310,7 +1454,7 @@ def compose_post():
 
 @app.route("/compose/schedule", methods=["POST"])
 def compose_schedule():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     tweets_json = request.form.get("tweets", "[]")
@@ -1323,9 +1467,10 @@ def compose_schedule():
         return redirect("/compose")
     if not tweets or not scheduled_at:
         return redirect("/compose")
-    _sb_post("drafts", {
-        "user_id": db_uid, "tweets": json.dumps(tweets), "format": fmt,
-        "topic": topic, "status": "scheduled", "scheduled_at": scheduled_at,
+    db.collection("users").document(db_uid).collection("drafts").document().set({
+        "tweets": tweets, "format": fmt, "topic": topic,
+        "status": "scheduled", "scheduled_at": scheduled_at,
+        "created_at": datetime.now(timezone.utc).isoformat()
     })
     return redirect("/calendar")
 
@@ -1334,22 +1479,22 @@ def compose_schedule():
 
 @app.route("/linkedin")
 def linkedin_page():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
-    li_drafts = [d for d in (_safe_db(db_load_drafts, db_uid, "draft") or []) if d.get("format") == "linkedin"]
+    li_drafts = [d for d in (db_load_drafts(db_uid, "draft") or []) if d.get("format") == "linkedin"]
     return render_template("linkedin.html", connected=True, username=session.get("username", ""),
                            step="start", saved_drafts=li_drafts[:5])
 
 
 @app.route("/linkedin/ideas", methods=["POST"])
 def linkedin_ideas():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     seed_topic = request.form.get("seed_topic", "").strip() or None
     ideas = generate_linkedin_ideas(session.get("username", ""), db_uid, seed_topic=seed_topic)
-    li_drafts = [d for d in (_safe_db(db_load_drafts, db_uid, "draft") or []) if d.get("format") == "linkedin"]
+    li_drafts = [d for d in (db_load_drafts(db_uid, "draft") or []) if d.get("format") == "linkedin"]
     return render_template("linkedin.html", connected=True, username=session.get("username", ""),
                            step="ideas", ideas=ideas, seed_topic=seed_topic or "",
                            saved_drafts=li_drafts[:5])
@@ -1357,7 +1502,7 @@ def linkedin_ideas():
 
 @app.route("/linkedin/brief", methods=["POST"])
 def linkedin_brief():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     title = request.form.get("title", "").strip()
@@ -1373,7 +1518,6 @@ def linkedin_brief():
     if not title:
         return redirect("/linkedin")
 
-    # Pass richer context to brief generator
     idea_context = angle
     if core_claim:
         idea_context += f"\nCore claim: {core_claim}"
@@ -1387,7 +1531,7 @@ def linkedin_brief():
 
 @app.route("/linkedin/drafts", methods=["POST"])
 def linkedin_drafts():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     topic = request.form.get("topic", "")
@@ -1404,7 +1548,7 @@ def linkedin_drafts():
 
 @app.route("/linkedin/save", methods=["POST"])
 def linkedin_save():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     post_text = request.form.get("post", "").strip()
@@ -1416,8 +1560,7 @@ def linkedin_save():
 
 @app.route("/linkedin/generate", methods=["POST"])
 def linkedin_generate_direct():
-    """Direct generation from custom topic — skip ideas, generate brief then show it."""
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     topic = request.form.get("topic", "").strip()
@@ -1429,38 +1572,41 @@ def linkedin_generate_direct():
         return render_template("linkedin.html", connected=True, username=session.get("username", ""),
                                step="start", error="Failed to generate brief. Try again.")
 
-    # Show the brief first — let user review before generating drafts
     return render_template("linkedin.html", connected=True, username=session.get("username", ""),
                            step="brief", brief=brief, topic=topic, angle=topic)
 
 
 @app.route("/calendar")
 def calendar_view():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
-    scheduled = _sb_get("drafts", f"user_id=eq.{db_uid}&status=eq.scheduled&order=scheduled_at.asc") or []
-    posted = _sb_get("drafts", f"user_id=eq.{db_uid}&status=eq.posted&order=posted_at.desc&limit=10") or []
-    for item in scheduled + posted:
-        if isinstance(item.get("tweets"), str):
-            item["tweets"] = json.loads(item["tweets"])
+    scheduled = db.collection("users").document(db_uid).collection("drafts").where("status", "==", "scheduled").order_by("scheduled_at").get()
+    posted = db.collection("users").document(db_uid).collection("drafts").where("status", "==", "posted").order_by("posted_at", direction=firestore.Query.DESCENDING).limit(10).get()
+    
+    scheduled_list = [d.to_dict() for d in scheduled]
+    posted_list = [d.to_dict() for d in posted]
+    for item in scheduled_list + posted_list:
+        if "id" not in item:
+            # Fallback doc id
+            item["id"] = item.get("id", "")
     return render_template("calendar.html", connected=True, username=session.get("username", ""),
-                           scheduled=scheduled, posted=posted)
+                           scheduled=scheduled_list, posted=posted_list)
 
 
 @app.route("/calendar/post-now/<draft_id>", methods=["POST"])
 def calendar_post_now(draft_id):
-    token = session.get("access_token")
+    db_uid = ensure_db_uid()
+    token = get_valid_twitter_token(db_uid)
     if not token:
         return redirect("/")
-    db_uid = ensure_db_uid()
-    rows = _sb_get("drafts", f"id=eq.{draft_id}&user_id=eq.{db_uid}")
-    if not rows:
+    
+    draft_ref = db.collection("users").document(db_uid).collection("drafts").document(draft_id)
+    doc = draft_ref.get()
+    if not doc.exists:
         return redirect("/calendar")
-    draft = rows[0]
+    draft = doc.to_dict()
     tweets = draft.get("tweets", [])
-    if isinstance(tweets, str):
-        tweets = json.loads(tweets)
     headers = {"Authorization": f"Bearer {token}", "Content-Type": "application/json"}
     posted, reply_to = [], None
     for tweet_text in tweets:
@@ -1481,18 +1627,20 @@ def calendar_post_now(draft_id):
 
 @app.route("/calendar/reschedule/<draft_id>", methods=["POST"])
 def calendar_reschedule(draft_id):
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     new_time = request.form.get("scheduled_at", "")
     if new_time:
-        _sb_patch("drafts", {"scheduled_at": new_time}, f"id=eq.{draft_id}&user_id=eq.{db_uid}")
+        db.collection("users").document(db_uid).collection("drafts").document(draft_id).update({
+            "scheduled_at": new_time
+        })
     return redirect("/calendar")
 
 
 @app.route("/calendar/edit/<draft_id>", methods=["POST"])
 def calendar_edit(draft_id):
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
     tweets_json = request.form.get("tweets", "[]")
@@ -1501,25 +1649,27 @@ def calendar_edit(draft_id):
     except json.JSONDecodeError:
         return redirect("/calendar")
     if tweets:
-        _sb_patch("drafts", {"tweets": json.dumps(tweets)}, f"id=eq.{draft_id}&user_id=eq.{db_uid}")
+        db.collection("users").document(db_uid).collection("drafts").document(draft_id).update({
+            "tweets": tweets
+        })
     return redirect("/calendar")
 
 
 @app.route("/calendar/delete/<draft_id>", methods=["POST"])
 def calendar_delete(draft_id):
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
-    _sb_delete("drafts", f"id=eq.{draft_id}&user_id=eq.{db_uid}")
+    db.collection("users").document(db_uid).collection("drafts").document(draft_id).delete()
     return redirect("/calendar")
 
 
 @app.route("/drafts")
 def drafts_view():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
-    all_drafts = _safe_db(db_load_drafts, db_uid) or []
+    all_drafts = db_load_drafts(db_uid) or []
     draft_list = [d for d in all_drafts if d.get("status") == "draft"]
     posted_list = [d for d in all_drafts if d.get("status") == "posted"]
     return render_template("drafts.html", connected=True, username=session.get("username", ""),
@@ -1528,20 +1678,19 @@ def drafts_view():
 
 @app.route("/settings")
 def settings():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
-    profile = _safe_db(db_load_profile, db_uid) or {}
+    profile = db_load_profile(db_uid) or {}
     return render_template("settings.html", connected=True, username=session.get("username", ""), profile=profile)
 
 
 @app.route("/settings/save", methods=["POST"])
 def settings_save():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
 
-    # Parse voice examples from textarea (one per line)
     examples_raw = request.form.get("voice_examples", "")
     voice_examples = [line.strip() for line in examples_raw.split("\n---\n") if line.strip()]
 
@@ -1553,84 +1702,45 @@ def settings_save():
         "opinions": request.form.get("opinions", "").strip(),
         "donts": request.form.get("donts", "").strip(),
     }
-    _safe_db(db_save_profile, db_uid, data)
+    db_save_profile(db_uid, data)
     return render_template("settings.html", connected=True, username=session.get("username", ""),
                            profile=data, saved=True)
 
 
 @app.route("/debug")
 def debug():
-    if not session.get("access_token"):
+    if not session.get("firebase_uid"):
         return redirect("/")
     info = {
-        "session_user_id": session.get("user_id"),
+        "session_firebase_uid": session.get("firebase_uid"),
         "session_username": session.get("username"),
         "session_db_user_id": session.get("db_user_id"),
-        "supabase_url_set": bool(SUPABASE_URL),
-        "supabase_key_set": bool(SUPABASE_KEY),
+        "firebase_project": firebase_admin.get_app().project_id if firebase_admin.get_app() else None
     }
-
-    # Test raw REST call
-    x_uid = session.get("user_id")
-    try:
-        test_url = f"{SUPABASE_URL}/rest/v1/users?x_user_id=eq.{x_uid}&select=id"
-        r = req_lib.get(test_url, headers=SB_HEADERS)
-        info["test_get_status"] = r.status_code
-        info["test_get_body"] = r.text[:500]
-    except Exception as e:
-        info["test_get_error"] = str(e)
-
-    # Try insert
-    if not info.get("test_get_body", "").strip().startswith("[{"):
-        try:
-            insert_url = f"{SUPABASE_URL}/rest/v1/users"
-            payload = {"x_user_id": str(x_uid), "username": session.get("username", ""),
-                       "name": session.get("name", ""), "access_token": "redacted"}
-            r2 = req_lib.post(insert_url, headers=SB_HEADERS, json=payload)
-            info["test_insert_status"] = r2.status_code
-            info["test_insert_body"] = r2.text[:500]
-            if r2.status_code in (200, 201):
-                data = r2.json()
-                if data:
-                    session["db_user_id"] = data[0]["id"]
-                    info["new_db_uid"] = data[0]["id"]
-        except Exception as e:
-            info["test_insert_error"] = str(e)
-
-    db_uid = session.get("db_user_id")
-    info["final_db_uid"] = db_uid
-    if db_uid:
-        info["bookmarks_rows"] = len(_sb_get("bookmarks_cache", f"user_id=eq.{db_uid}&select=last_id"))
-        info["tweets_rows"] = len(_sb_get("tweets_cache", f"user_id=eq.{db_uid}&select=last_id"))
-        info["drafts"] = _sb_get("drafts", f"user_id=eq.{db_uid}&select=id,topic,status")
     return f"<html><body><pre>{json.dumps(info, indent=2, default=str)}</pre></body></html>"
 
 
 @app.route("/api/cron")
 def run_cron():
     """Auto-post scheduled tweets. Called by Vercel Cron every 15 min."""
-    if not SUPABASE_URL:
-        return json.dumps({"status": "no supabase"}), 200
-
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    due = _sb_get("drafts", f"status=eq.scheduled&scheduled_at=lte.{now}&select=id,user_id,tweets")
-    if not due:
+    due_docs = db.collection_group("drafts")\
+                 .where("status", "==", "scheduled")\
+                 .where("scheduled_at", "<=", now)\
+                 .get()
+                 
+    if not due_docs:
         return json.dumps({"status": "nothing due", "checked_at": now}), 200
 
     results = []
-    for draft in due:
-        draft_id = draft["id"]
-        user_id = draft["user_id"]
+    for doc in due_docs:
+        draft = doc.to_dict()
+        draft_id = doc.id
+        user_id = doc.reference.parent.parent.id
         tweets = draft.get("tweets", [])
-        if isinstance(tweets, str):
-            tweets = json.loads(tweets)
-
-        users = _sb_get("users", f"id=eq.{user_id}&select=access_token")
-        if not users:
-            results.append({"draft_id": draft_id, "status": "no user"})
-            continue
-        token = users[0].get("access_token", "")
+        
+        token = get_valid_twitter_token(user_id)
         if not token:
             results.append({"draft_id": draft_id, "status": "no token"})
             continue
@@ -1652,10 +1762,10 @@ def run_cron():
                 break
 
         if not failed and posted:
-            _sb_patch("drafts", {"status": "posted", "posted_at": now}, f"id=eq.{draft_id}")
+            doc.reference.update({"status": "posted", "posted_at": now})
             results.append({"draft_id": draft_id, "status": "posted", "ids": posted})
 
-    return json.dumps({"status": "ok", "processed": len(due), "results": results}), 200
+    return json.dumps({"status": "ok", "processed": len(due_docs), "results": results}), 200
 
 
 @app.route("/logout")
@@ -1665,4 +1775,6 @@ def logout():
 
 
 if __name__ == "__main__":
-    app.run(debug=False, port=5000)
+    port = int(os.environ.get("PORT", 5001))
+    app.run(debug=False, port=port)
+
