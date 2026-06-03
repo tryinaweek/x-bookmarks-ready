@@ -553,9 +553,11 @@ def _call_claude(prompt, max_tokens=4096):
 def analyze_bookmarks(bookmarks, username=""):
     if not CLAUDE_API_KEY:
         return None, "CLAUDE_API_KEY not configured"
-    condensed = [f"[{i}] ({bm['date']}) @{bm['username']}: {bm['text'][:280]}" for i, bm in enumerate(bookmarks, 1)]
+    # Limit analysis to the latest 200 bookmarks to stay within Anthropic's Tier 1 TPM (30,000 tokens/min) rate limits
+    active_bookmarks = bookmarks[:200]
+    condensed = [f"[{i}] ({bm['date']}) @{bm['username']}: {bm['text'][:280]}" for i, bm in enumerate(active_bookmarks, 1)]
     user_ref = f"@{username}" if username else "user"
-    prompt = f"""Analyze these {len(bookmarks)} X/Twitter bookmarks for {user_ref}. Return ONLY valid JSON:
+    prompt = f"""Analyze these {len(active_bookmarks)} X/Twitter bookmarks for {user_ref}. Return ONLY valid JSON:
 {{"summary":"2-3 sentences using you/your","categories":[{{"name":"...","count":5,"bookmark_ids":[1,5],"summary":"..."}}],"timeline":[{{"period":"...","theme":"...","count":15,"bookmark_ids":[1,2]}}],"gems":[{{"id":5,"title":"...","reason":"..."}}],"stale":[{{"id":12,"title":"...","reason":"..."}}],"actions":[{{"text":"...","bookmark_ids":[20,50]}}]}}
 Rules: 5-8 categories, 3-5 timeline phases with count, 5-10 gems, stale items, 3-5 actions with bookmark_ids. Use you/your.
 Bookmarks:\n""" + "\n".join(condensed)
