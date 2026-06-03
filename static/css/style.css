@@ -1006,3 +1006,123 @@ footer {
 .sync-confirm.show {
   display: inline-flex;
 }
+
+/* --- Gating & Credits (Model B) ------------------------------------------ */
+.blurred-row {
+  cursor: pointer;
+  background: var(--bg) !important;
+}
+.blurred-row:hover {
+  background: var(--border-light) !important;
+}
+.blurred-text {
+  filter: blur(4.5px);
+  user-select: none;
+  pointer-events: none;
+  opacity: 0.45;
+}
+.lock-icon {
+  font-size: 16px;
+  color: var(--text-light);
+  display: inline-block;
+  vertical-align: middle;
+}
+.preview-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+.credits-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--primary-light);
+  border: 1px solid #ddd6fe;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 20px;
+}
+
+/* Modal Overlay */
+.paywall-modal {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(17, 24, 39, 0.4);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  z-index: 20000;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
+.paywall-modal.show {
+  display: flex;
+}
+.paywall-modal-content {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 32px;
+  max-width: 480px;
+  width: 100%;
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  text-align: center;
+  animation: modal-enter 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@keyframes modal-enter {
+  from { transform: scale(0.95); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.paywall-modal-close {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-light);
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  line-height: 1;
+}
+.paywall-modal-close:hover {
+  color: var(--text);
+}
+.paywall-modal-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  display: inline-block;
+}
+.paywall-modal-title {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--text);
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+.paywall-modal-text {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  margin-bottom: 24px;
+}
+.paywall-modal-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+

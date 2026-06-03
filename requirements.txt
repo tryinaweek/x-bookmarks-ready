@@ -3,3 +3,4 @@ requests
 openpyxl
 anthropic
 firebase-admin
+stripe

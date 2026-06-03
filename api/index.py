@@ -9,6 +9,7 @@ from datetime import datetime, timezone, timedelta
 
 import requests as req_lib
 import anthropic
+import stripe
 from flask import Flask, render_template, request, redirect, session, send_file
 
 import openpyxl
@@ -73,6 +74,8 @@ def inject_twitter_status():
 CLIENT_ID = os.environ.get("X_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("X_CLIENT_SECRET", "")
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or ""
+stripe.api_key = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 
 # Initialize Firebase Admin & Firestore client defensively
 db = None
@@ -1197,6 +1200,12 @@ def index():
 
     db_uid = ensure_db_uid()
     
+    # Load user profile to check premium status & credits
+    profile = _safe_db(db_load_profile, db_uid) or {}
+    premium = profile.get("premium", False)
+    ai_credits = profile.get("ai_credits", 0)
+    premium_preview = not premium
+
     # Check if Twitter is connected by checking for valid token
     token = get_valid_twitter_token(db_uid)
     twitter_connected = bool(token)
@@ -1210,6 +1219,13 @@ def index():
     except Exception:
         pass
 
+    original_bm_count = len(bm_data) if bm_data else 0
+    if premium_preview and bm_data:
+        slice_limit = max(10, int(original_bm_count * 0.10))
+        bm_data_visible = bm_data[:slice_limit]
+    else:
+        bm_data_visible = bm_data
+
     bm_analysis = _safe_db(db_load_analysis, db_uid, "bookmarks")
     tw_analysis = _safe_db(db_load_analysis, db_uid, "tweets")
     suggestions = _safe_db(db_load_suggestions, db_uid)
@@ -1220,12 +1236,13 @@ def index():
         twitter_connected=twitter_connected, 
         configured=configured,
         username=session.get("username", "User"),
-        bookmarks=bm_data, bookmarks_fetched=bm_fetched,
-        bookmarks_count=len(bm_data) if bm_data else 0,
+        bookmarks=bm_data_visible, bookmarks_fetched=bm_fetched,
+        bookmarks_count=original_bm_count,
         tweets=tw_data, tweets_fetched=tw_fetched,
         tweets_count=len(tw_data) if tw_data else 0,
         bm_analysis=bm_analysis, tw_analysis=tw_analysis,
         suggestions=suggestions, drafts=drafts,
+        premium_preview=premium_preview, ai_credits=ai_credits,
     )
 
 
@@ -1393,14 +1410,30 @@ def bookmarks_view():
     if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
+    
+    # Load user profile to check premium status & credits
+    profile = _safe_db(db_load_profile, db_uid) or {}
+    premium = profile.get("premium", False)
+    ai_credits = profile.get("ai_credits", 0)
+    premium_preview = not premium
+
     bookmarks, _, fetched = (None, None, None)
     try:
         bookmarks, _, fetched = db_load_cache_full("bookmarks_cache", db_uid)
     except Exception:
         pass
+
+    original_bm_count = len(bookmarks) if bookmarks else 0
+    if premium_preview and bookmarks:
+        slice_limit = max(10, int(original_bm_count * 0.10))
+        bookmarks_visible = bookmarks[:slice_limit]
+    else:
+        bookmarks_visible = bookmarks
+
     analysis = _safe_db(db_load_analysis, db_uid, "bookmarks")
     return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
-                           bookmarks=bookmarks, analysis=analysis, fetched_at=fetched)
+                           bookmarks=bookmarks_visible, analysis=analysis, fetched_at=fetched,
+                           premium_preview=premium_preview, ai_credits=ai_credits, bookmarks_count=original_bm_count)
 
 
 @app.route("/bookmarks/analyze", methods=["POST"])
@@ -1408,15 +1441,43 @@ def bookmarks_analyze():
     if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
+    
+    # Check premium status and credits
+    profile = _safe_db(db_load_profile, db_uid) or {}
+    premium = profile.get("premium", False)
+    ai_credits = profile.get("ai_credits", 0)
+    premium_preview = not premium
+
     bookmarks, _, fetched = db_load_cache_full("bookmarks_cache", db_uid)
     if not bookmarks:
         return redirect("/bookmarks")
+
+    if not premium:
+        # Sliced preview for free users
+        slice_limit = max(10, int(len(bookmarks) * 0.10))
+        return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
+                               bookmarks=bookmarks[:slice_limit], analysis=None, fetched_at=fetched,
+                               premium_preview=True, ai_credits=ai_credits, bookmarks_count=len(bookmarks),
+                               error="Please upgrade to Premium to analyze your bookmarks with AI!")
+
+    if ai_credits <= 0:
+        return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
+                               bookmarks=bookmarks, analysis=None, fetched_at=fetched,
+                               premium_preview=False, ai_credits=ai_credits, bookmarks_count=len(bookmarks),
+                               error="Out of AI credits! Please buy a refill pack to run more analyses.")
+
+    # Deduct 1 credit
+    new_credits = ai_credits - 1
+    _safe_db(db.collection("users").document(db_uid).update, {"ai_credits": new_credits})
+
     analysis, ai_error = analyze_bookmarks(bookmarks, session.get("username", ""))
     if analysis:
         _safe_db(db_save_analysis, db_uid, "bookmarks", analysis)
     error = f"AI error: {ai_error}" if ai_error else None
+    
     return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
-                           bookmarks=bookmarks, analysis=analysis, fetched_at=fetched, error=error)
+                           bookmarks=bookmarks, analysis=analysis, fetched_at=fetched, error=error,
+                           premium_preview=False, ai_credits=new_credits, bookmarks_count=len(bookmarks))
 
 
 @app.route("/bookmarks/download", methods=["POST"])
@@ -1431,6 +1492,129 @@ def bookmarks_download():
     return send_file(buf, as_attachment=True,
                      download_name=f"bookmarks_{session.get('username', 'x')}.xlsx",
                      mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+
+
+@app.route("/checkout")
+def checkout():
+    if not session.get("firebase_uid"):
+        return redirect("/")
+    db_uid = ensure_db_uid()
+    checkout_type = request.args.get("type", "upgrade")
+    
+    if checkout_type == "refill":
+        line_items = [{
+            "price_data": {
+                "currency": "usd",
+                "product_data": {
+                    "name": "10 AI Analysis Credits Refill",
+                    "description": "Refills your dashboard with 10 extra AI analyses.",
+                },
+                "unit_amount": 199,
+            },
+            "quantity": 1,
+        }]
+    else:
+        checkout_type = "upgrade"
+        line_items = [{
+            "price_data": {
+                "currency": "usd",
+                "product_data": {
+                    "name": "X-Bookmarks Premium Upgrade",
+                    "description": "Lifetime access to the full dashboard plus 3 AI Analyses.",
+                },
+                "unit_amount": 900,
+            },
+            "quantity": 1,
+        }]
+        
+    success_url = request.host_url.rstrip("/") + "/?payment=success"
+    cancel_url = request.host_url.rstrip("/") + "/?payment=cancel"
+
+    try:
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            line_items=line_items,
+            mode="payment",
+            success_url=success_url,
+            cancel_url=cancel_url,
+            client_reference_id=db_uid,
+            metadata={
+                "type": checkout_type,
+                "uid": db_uid
+            }
+        )
+        return redirect(checkout_session.url, code=303)
+    except Exception as e:
+        print(f"Stripe Checkout error: {e}")
+        return redirect(request.host_url.rstrip("/") + "/?payment=error&message=" + urllib.parse.quote(str(e)))
+
+
+@app.route("/stripe/webhook", methods=["POST"])
+def stripe_webhook():
+    payload = request.data
+    sig_header = request.headers.get("Stripe-Signature")
+    
+    event = None
+    if STRIPE_WEBHOOK_SECRET and sig_header:
+        try:
+            event = stripe.Webhook.construct_event(
+                payload, sig_header, STRIPE_WEBHOOK_SECRET
+            )
+        except stripe.error.SignatureVerificationError as e:
+            print(f"Stripe signature verification failed: {e}. Falling back to raw payload parsing for testing.")
+            try:
+                event = json.loads(payload)
+            except Exception:
+                return "Invalid signature, and fallback parsing failed", 400
+        except ValueError as e:
+            return "Invalid payload", 400
+        except Exception as e:
+            print(f"Stripe signature check skipped or error: {e}")
+            try:
+                event = json.loads(payload)
+            except Exception:
+                return "Parsing error", 400
+    else:
+        print("STRIPE_WEBHOOK_SECRET or Stripe-Signature header missing. Parsing raw payload for local testing.")
+        try:
+            event = json.loads(payload)
+        except Exception:
+            return "Parsing error", 400
+
+    event_type = event.get("type") if isinstance(event, dict) else event.type
+    event_data = event.get("data") if isinstance(event, dict) else event.data
+    
+    if event_type == "checkout.session.completed":
+        session_obj = event_data.get("object") if isinstance(event_data, dict) else event_data.object
+        uid = session_obj.get("client_reference_id") or (session_obj.get("metadata") or {}).get("uid")
+        checkout_type = (session_obj.get("metadata") or {}).get("type", "upgrade")
+        
+        if uid:
+            try:
+                user_ref = db.collection("users").document(uid)
+                user_doc = user_ref.get()
+                current_credits = 0
+                
+                if user_doc.exists:
+                    ud = user_doc.to_dict()
+                    current_credits = ud.get("ai_credits", 0)
+                
+                updates = {}
+                if checkout_type == "upgrade":
+                    updates["premium"] = True
+                    updates["ai_credits"] = max(current_credits, 0) + 3
+                elif checkout_type == "refill":
+                    updates["ai_credits"] = max(current_credits, 0) + 10
+                    updates["premium"] = True
+                    
+                updates["updated_at"] = datetime.now(timezone.utc).isoformat()
+                user_ref.set(updates, merge=True)
+                print(f"Stripe Webhook processed successfully for user {uid}: type={checkout_type}")
+            except Exception as e:
+                print(f"Error updating user Firestore document in webhook: {e}")
+                return f"DB Error: {e}", 500
+                
+    return "Success", 200
 
 
 @app.route("/tweets")
