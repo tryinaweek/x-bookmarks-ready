@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Privacy Policy - X-Bookmarks</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #fafafa;
+      color: #1a1a1a;
+      line-height: 1.6;
+      padding: 40px 24px;
+    }
+    .policy-container {
+      max-width: 680px;
+      margin: 0 auto;
+      background: #ffffff;
+      border: 1px solid #e5e5e5;
+      border-radius: 12px;
+      padding: 40px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.02);
+    }
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      margin-bottom: 8px;
+      letter-spacing: -0.5px;
+    }
+    .last-updated {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 32px;
+      border-bottom: 1px solid #f0f0f0;
+      padding-bottom: 16px;
+    }
+    h2 {
+      font-size: 18px;
+      font-weight: 700;
+      margin: 28px 0 12px 0;
+      color: #111;
+    }
+    p, li {
+      font-size: 14px;
+      color: #4b5563;
+      margin-bottom: 16px;
+    }
+    ul {
+      margin-left: 20px;
+      margin-bottom: 16px;
+    }
+    .back-link {
+      display: inline-block;
+      margin-top: 32px;
+      font-size: 13px;
+      color: #7c3aed;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .back-link:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+
+<div class="policy-container">
+  <h1>Privacy Policy</h1>
+  <div class="last-updated">Last Updated: June 3, 2026</div>
+
+  <p>This Privacy Policy describes how <strong>X-Bookmarks</strong> (the "Extension") and the accompanying website at <strong>xbookmarksync.com</strong> (the "Service") collect, use, and handle your data when you use our browser extension and bookmark dashboard utility.</p>
+
+  <h2>1. Data Collection & Scraping</h2>
+  <p>Our extension is a scraper utility built to sync your X/Twitter reading lists. When you initiate a synchronization, the extension parses and collects the following data points directly from the browser window:</p>
+  <ul>
+    <li><strong>Bookmark Payload</strong>: The text content, author username, date saved, and public metrics (likes, retweets) of your bookmarked tweets.</li>
+    <li><strong>Authentication Info</strong>: The temporary Firebase JWT (JSON Web Token) used to verify your account identity.</li>
+  </ul>
+  <p>The extension <strong>does not</strong> collect, read, or track your passwords, browsing history, private messages, personal account profile details, or activity on other websites.</p>
+
+  <h2>2. Data Transmission and Storage</h2>
+  <p>All data operations are handled securely:</p>
+  <ul>
+    <li><strong>Direct Sync</strong>: All scraped bookmark records are sent securely via encrypted HTTPS connections directly to your personal workspace database hosted on Cloud Firestore.</li>
+    <li><strong>No Middleman Servers</strong>: We do not process, store, or intercept your bookmarks on any third-party intermediary servers. Your database connection remains direct.</li>
+  </ul>
+
+  <h2>3. Third-Party Sharing & Data Use</h2>
+  <p>We believe in absolute data ownership:</p>
+  <ul>
+    <li>We <strong>do not sell, rent, trade, or distribute</strong> your bookmarks or authentication tokens to any advertisers or third-party entities.</li>
+    <li>Your data is used exclusively to populate your personal bookmark management dashboard, run AI categorization, and draft tweets inside your private workspace.</li>
+  </ul>
+
+  <h2>4. Data Deletion and Control</h2>
+  <p>You have full control over your data. You can delete individual bookmarks or purge your entire cache at any time directly through the dashboard database settings panel. Once deleted, the records are permanently purged from your database.</p>
+
+  <h2>5. Contact Us</h2>
+  <p>If you have any questions or concerns regarding this privacy policy, please contact us at support@xbookmarksync.com.</p>
+
+  <a href="/" class="back-link">&larr; Back to Homepage</a>
+</div>
+
+</body>
+</html>

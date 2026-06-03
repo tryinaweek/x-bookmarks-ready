@@ -1221,6 +1221,12 @@ def index():
     )
 
 
+@app.route("/privacy")
+def privacy():
+    """Privacy Policy page for Chrome Web Store compliance."""
+    return render_template("privacy.html")
+
+
 @app.route("/connect", methods=["POST"])
 def connect():
     if not CLIENT_ID or not CLIENT_SECRET:

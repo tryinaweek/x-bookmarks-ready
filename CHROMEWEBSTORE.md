@@ -84,7 +84,7 @@ English
 ## Privacy Policy
 
 **Privacy Policy URL**  
-`https://github.com/tryinaweek/x-bookmark-exporter/blob/main/PRIVACY.md` *(or your custom domain url)*
+`https://xbookmarksync.com/privacy`
 
 ---
 
