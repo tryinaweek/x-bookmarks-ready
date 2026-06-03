@@ -1227,6 +1227,13 @@ def privacy():
     return render_template("privacy.html")
 
 
+@app.route("/test-landing")
+def test_landing():
+    """Temporary preview route for the new landing page design."""
+    configured = bool(CLIENT_ID and CLIENT_SECRET)
+    return render_template("landing_new.html", configured=configured, connected=False)
+
+
 @app.route("/connect", methods=["POST"])
 def connect():
     if not CLIENT_ID or not CLIENT_SECRET:
