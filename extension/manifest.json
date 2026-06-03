@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "X-Bookmarks: AI Sync & Archive",
+  "name": "X-Bookmarks",
   "version": "1.0.0",
   "description": "Seamlessly sync your X/Twitter Bookmarks directly to your MyBookmarks dashboard.",
   "permissions": [
