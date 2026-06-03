@@ -531,7 +531,7 @@ FORMATTING_RULES = """STRICT FORMATTING RULES:
 - Tone: confident, direct, from experience. Not lecturing. Sharing."""
 
 
-def _call_claude(prompt, max_tokens=4096):
+def _call_claude(prompt, max_tokens=8192):
     try:
         client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
         message = client.messages.create(
@@ -560,6 +560,7 @@ def analyze_bookmarks(bookmarks, username=""):
     prompt = f"""Analyze these {len(active_bookmarks)} X/Twitter bookmarks for {user_ref}. Return ONLY valid JSON:
 {{"summary":"2-3 sentences using you/your","categories":[{{"name":"...","count":5,"bookmark_ids":[1,5],"summary":"..."}}],"timeline":[{{"period":"...","theme":"...","count":15,"bookmark_ids":[1,2]}}],"gems":[{{"id":5,"title":"...","reason":"..."}}],"stale":[{{"id":12,"title":"...","reason":"..."}}],"actions":[{{"text":"...","bookmark_ids":[20,50]}}]}}
 Rules: 5-8 categories, 3-5 timeline phases with count, 5-10 gems, stale items, 3-5 actions with bookmark_ids. Use you/your.
+CRITICAL: To ensure the JSON is valid, you MUST escape any double quotes (") inside JSON string values with a backslash (e.g. use \\\" instead of \") or replace them with single quotes/apostrophes.
 Bookmarks:\n""" + "\n".join(condensed)
     return _call_claude(prompt)
 
@@ -571,6 +572,7 @@ def analyze_tweets(tweets, username=""):
     prompt = f"""Analyze these {len(tweets)} tweets from @{username}. Return ONLY valid JSON:
 {{"summary":"...","top_performers":[{{"id":1,"title":"...","why":"..."}}],"underperformers":[{{"id":5,"title":"...","why":"..."}}],"patterns":[{{"pattern":"...","evidence":"...","recommendation":"..."}}],"content_suggestions":[{{"tweet":"...","based_on":[1],"rationale":"..."}}],"strategy":{{"best_topics":["..."],"avoid_topics":["..."],"best_formats":["..."],"posting_advice":"..."}}}}
 Rules: 5-8 top, 3-5 under, 3-5 patterns, 5-8 suggestions under 280 chars, strategy. Use you/your.
+CRITICAL: To ensure the JSON is valid, you MUST escape any double quotes (") inside JSON string values with a backslash (e.g. use \\\" instead of \") or replace them with single quotes/apostrophes.
 Tweets:\n""" + "\n".join(condensed)
     return _call_claude(prompt)
 
