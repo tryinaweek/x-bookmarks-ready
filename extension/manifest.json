@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "X-Bookmarks",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Seamlessly sync your X/Twitter Bookmarks directly to your MyBookmarks dashboard.",
   "permissions": [
     "storage"
@@ -31,7 +31,9 @@
       "matches": [
         "http://localhost:5001/*",
         "http://127.0.0.1:5001/*",
-        "https://*.vercel.app/*"
+        "https://*.vercel.app/*",
+        "https://xbookmarksync.com/*",
+        "https://*.xbookmarksync.com/*"
       ],
       "js": ["dashboard-helper.js"],
       "run_at": "document_idle"
@@ -49,7 +51,9 @@
     "matches": [
       "http://localhost/*",
       "http://127.0.0.1/*",
-      "https://*.vercel.app/*"
+      "https://*.vercel.app/*",
+      "https://xbookmarksync.com/*",
+      "https://*.xbookmarksync.com/*"
     ]
   }
 }

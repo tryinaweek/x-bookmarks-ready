@@ -532,18 +532,22 @@ FORMATTING_RULES = """STRICT FORMATTING RULES:
 
 
 def _call_claude(prompt, max_tokens=4096):
-    client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
-    message = client.messages.create(
-        model="claude-3-5-sonnet-latest", max_tokens=max_tokens,
-        messages=[{"role": "user", "content": prompt}],
-    )
     try:
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        message = client.messages.create(
+            model="claude-3-5-sonnet-latest", max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
         raw = message.content[0].text
         if raw.startswith("```"):
             raw = raw.split("\n", 1)[1].rsplit("```", 1)[0]
         return json.loads(raw), None
+    except anthropic.APIError as e:
+        return None, f"Claude API error: {e.message}"
     except (json.JSONDecodeError, IndexError, KeyError) as e:
         return None, f"Failed to parse AI response: {e}"
+    except Exception as e:
+        return None, f"Claude integration error: {str(e)}"
 
 
 def analyze_bookmarks(bookmarks, username=""):
