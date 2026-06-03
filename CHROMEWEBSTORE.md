@@ -48,8 +48,8 @@ English
 | Asset | Dimensions | Status | Filename |
 |-------|-----------|--------|----------|
 | Store Icon | 128×128 PNG | ✅ Created | `extension/icons/icon128.png` (Upload high-res `icon_large.png` for the store page) |
-| Screenshot 1 | 1280×800 or 640×400 | ⬜ Not created | *Capture the Twitter Bookmarks page with the floating sync panel* |
-| Screenshot 2 | 1280×800 or 640×400 | ⬜ Not created | *Capture the popup displaying the Linked status* |
+| Screenshot 1 | 1280×800 or 640×400 | ✅ Created | `extension/screenshots/screenshot1.png` (Premium dashboard preview) |
+| Screenshot 2 | 1280×800 or 640×400 | ✅ Created | `extension/screenshots/screenshot2.png` (Extension sync panel preview) |
 
 ---
 
