@@ -439,14 +439,8 @@
   </nav>
 
   {% if error %}
-  <div class="setup-banner" style="background: #fff1f2; border-color: #ffe4e6; color: #e0245e; font-weight: 500;">
+  <div class="setup-banner" style="background: #fff1f2; border: 1px solid #ffe4e6; color: #e0245e; font-weight: 500; border-radius: 8px; padding: 12px 20px; max-width: 900px; margin: 24px auto 0 auto; text-align: center; font-size: 13px; line-height: 1.5;">
     ⚠️ <strong>Authentication Error</strong>: {{ error }}
-  </div>
-  {% endif %}
-
-  {% if not configured %}
-  <div class="setup-banner">
-    ⚠️ <strong>Local Note</strong>: X Developer API client keys are not set. The standard direct authorization is disabled. Please sync your bookmarks using the <strong>X-Bookmarks Chrome extension</strong>.
   </div>
   {% endif %}
 
