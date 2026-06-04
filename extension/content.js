@@ -112,6 +112,8 @@ let parsedIds = new Set();
 let scrapedData = [];
 let scrollAttempts = 0;
 let lastScrollHeight = 0;
+let isPremium = false;
+let currentPageType = "bookmarks"; // "bookmarks" or "profile"
 
 // Inject panel styles once
 function injectStyles() {
@@ -123,12 +125,29 @@ function injectStyles() {
   }
 }
 
+function isProfilePage() {
+  const path = window.location.pathname.replace(/^\/+|\/+$/g, "");
+  if (!path) return false;
+  
+  const segments = path.split("/");
+  if (segments.length > 2) return false; // Match /[username] or /[username]/with_replies, etc.
+  
+  const username = segments[0];
+  const reservedWords = [
+    "home", "explore", "notifications", "messages", "settings", "i", "compose", "search", 
+    "tos", "privacy", "logout", "login", "about", "trends", "hashtag", "share", "personalization"
+  ];
+  return !reservedWords.includes(username.toLowerCase());
+}
+
 // Check URL and manage sync panel visibility for Twitter SPA
 function checkPageAndInject() {
   const isBookmarksPage = window.location.pathname === "/i/bookmarks" || window.location.pathname.startsWith("/i/bookmarks");
+  const isProfile = isProfilePage();
   const existingPanel = document.getElementById("myBookmarksSyncPanel");
 
-  if (isBookmarksPage) {
+  if (isBookmarksPage || isProfile) {
+    currentPageType = isBookmarksPage ? "bookmarks" : "profile";
     injectStyles();
     if (!existingPanel) {
       // Create a temporary placeholder to prevent double calls while checking status async
@@ -139,6 +158,7 @@ function checkPageAndInject() {
       
       chrome.runtime.sendMessage({ type: "GET_STATUS" }, (response) => {
         const linked = response && response.linked;
+        isPremium = response && response.premium;
         
         // Remove placeholder and render actual panel
         placeholder.remove();
@@ -153,6 +173,20 @@ function checkPageAndInject() {
       });
     } else {
       existingPanel.style.display = "block";
+      // Update text and buttons dynamically if type switched
+      if (!isScraping) {
+        const statusText = document.getElementById("syncStatusText");
+        const syncStartBtn = document.getElementById("syncStartBtn");
+        
+        if (statusText) {
+          statusText.textContent = currentPageType === "bookmarks"
+            ? "Sync your Twitter/X bookmarks locally. Scroll page to load more."
+            : "Sync recent tweets from this profile page.";
+        }
+        if (syncStartBtn) {
+          syncStartBtn.textContent = currentPageType === "bookmarks" ? "Sync Bookmarks" : "Sync Profile Tweets";
+        }
+      }
     }
   } else {
     if (existingPanel) {
@@ -167,14 +201,26 @@ function renderInitialState(panel, linked) {
       <div class="my-sync-header">
         <span class="my-sync-icon">⚠️</span>
         <div>
-          <h4 class="my-sync-title">Bookmarks Scraper</h4>
+          <h4 class="my-sync-title">${currentPageType === 'bookmarks' ? 'Bookmarks Scraper' : 'Tweet Scraper'}</h4>
           <p class="my-sync-subtitle">Status: Extension Unlinked</p>
         </div>
       </div>
       <p class="my-sync-body">Please open your MyBookmarks dashboard page first to automatically link this extension.</p>
-      <button class="my-sync-btn my-sync-btn-primary" onclick="window.open('http://127.0.0.1:5001', '_blank')">Open Dashboard</button>
+      <button class="my-sync-btn my-sync-btn-primary" id="openDashboardBtn">Open Dashboard</button>
     `;
+    
+    panel.querySelector("#openDashboardBtn").addEventListener("click", () => {
+      chrome.runtime.sendMessage({ type: "GET_STATUS" }, (response) => {
+        const backendUrl = (response && response.backendUrl) || "http://127.0.0.1:5001";
+        window.open(backendUrl, "_blank");
+      });
+    });
   } else {
+    const defaultText = currentPageType === "bookmarks" 
+      ? "Sync your Twitter/X bookmarks locally. Scroll page to load more."
+      : "Sync recent tweets from this profile page.";
+    const btnText = currentPageType === "bookmarks" ? "Sync Bookmarks" : "Sync Profile Tweets";
+    
     panel.innerHTML = `
       <div class="my-sync-header">
         <span class="my-sync-icon">🔌</span>
@@ -183,12 +229,12 @@ function renderInitialState(panel, linked) {
           <p class="my-sync-subtitle">Status: Connected <span class="my-sync-pulse"></span></p>
         </div>
       </div>
-      <p class="my-sync-body" id="syncStatusText">Sync your Twitter/X bookmarks locally. Scroll page to load more.</p>
+      <p class="my-sync-body" id="syncStatusText">${defaultText}</p>
       <div class="my-sync-progress-bar" id="syncProgressBar">
         <div class="my-sync-progress-fill" id="syncProgressFill"></div>
       </div>
       <div id="syncButtonContainer" style="width: 100%;">
-        <button class="my-sync-btn my-sync-btn-primary" id="syncStartBtn">Sync Bookmarks</button>
+        <button class="my-sync-btn my-sync-btn-primary" id="syncStartBtn">${btnText}</button>
       </div>
     `;
 
@@ -208,7 +254,7 @@ async function toggleScraping() {
     btn.disabled = true;
     btn.textContent = "Uploading...";
     statusText.textContent = `Stopping scraper... Processing ${scrapedData.length} items.`;
-    await uploadScrapedBookmarks();
+    await uploadScrapedData();
   } else {
     // Start scraping
     isScraping = true;
@@ -220,7 +266,7 @@ async function toggleScraping() {
 
     btn.className = "my-sync-btn my-sync-btn-secondary";
     btn.textContent = "Stop & Save Sync";
-    statusText.textContent = "Auto-scrolling bookmarks list...";
+    statusText.textContent = "Auto-scrolling list...";
     progressBar.style.display = "block";
     progressFill.style.width = "0%";
 
@@ -231,6 +277,8 @@ async function toggleScraping() {
 // Scraper Loop using yielding scroll steps
 async function runScraperLoop() {
   if (!isScraping) return;
+
+  const targetLimit = currentPageType === "bookmarks" ? 2500 : (isPremium ? 50 : 10);
 
   // 1. Scrape currently visible tweets
   const articles = document.querySelectorAll("article");
@@ -250,11 +298,12 @@ async function runScraperLoop() {
   }
 
   scrapedCount = scrapedData.length;
-  document.getElementById("syncStatusText").textContent = `Syncing bookmarks: ${scrapedCount} loaded...`;
+  document.getElementById("syncStatusText").textContent = `Syncing ${currentPageType === 'bookmarks' ? 'bookmarks' : 'tweets'}: ${scrapedCount} loaded...`;
   
-  // Simple visual animation for progress
-  const progressPercent = Math.min((scrapedCount / 100) * 100, 100);
-  document.getElementById("syncProgressFill").style.width = `${progressPercent}%`;
+  // Simple visual animation for progress relative to target limit
+  const progressPercent = Math.min((scrapedCount / targetLimit) * 100, 100);
+  const fillEl = document.getElementById("syncProgressFill");
+  if (fillEl) fillEl.style.width = `${progressPercent}%`;
 
   // 2. Scroll page to trigger pagination
   window.scrollTo(0, document.body.scrollHeight);
@@ -270,14 +319,23 @@ async function runScraperLoop() {
     lastScrollHeight = currentHeight;
   }
 
-  // 3. Check termination conditions (no new heights or items for 5 retries, or reached bottom)
-  if (scrollAttempts >= 5) {
+  // 3. Check termination conditions
+  if (scrollAttempts >= 5 || scrapedCount >= targetLimit) {
     isScraping = false;
     const btn = document.getElementById("syncStartBtn");
-    btn.disabled = true;
-    btn.textContent = "Uploading...";
-    document.getElementById("syncStatusText").textContent = `Reached end! Syncing ${scrapedCount} items...`;
-    await uploadScrapedBookmarks();
+    if (btn) {
+      btn.disabled = true;
+      btn.textContent = "Uploading...";
+    }
+    const statusEl = document.getElementById("syncStatusText");
+    if (statusEl) {
+      if (scrapedCount >= targetLimit) {
+        statusEl.textContent = `Reached storage limit of ${targetLimit}! Syncing items...`;
+      } else {
+        statusEl.textContent = `Reached end! Syncing ${scrapedCount} items...`;
+      }
+    }
+    await uploadScrapedData();
   } else {
     // Keep looping
     runScraperLoop();
@@ -292,20 +350,26 @@ function resetPanelToConnectedState() {
   }
 }
 
-async function uploadScrapedBookmarks() {
+async function uploadScrapedData() {
   const statusText = document.getElementById("syncStatusText");
   const container = document.getElementById("syncButtonContainer");
   const progressBar = document.getElementById("syncProgressBar");
   if (progressBar) progressBar.style.display = "none";
 
+  const messageType = currentPageType === "bookmarks" ? "UPLOAD_BOOKMARKS" : "UPLOAD_TWEETS";
+  const payloadKey = currentPageType === "bookmarks" ? "bookmarks" : "tweets";
+
   chrome.runtime.sendMessage({
-    type: "UPLOAD_BOOKMARKS",
-    bookmarks: scrapedData
+    type: messageType,
+    [payloadKey]: scrapedData
   }, (response) => {
     if (response && response.status === "success") {
       const data = response.data;
       const backendUrl = response.backendUrl || "http://127.0.0.1:5001";
-      statusText.innerHTML = `✅ Successfully synced ${data.count} bookmarks! (Total: ${data.total}).`;
+      const itemLabel = currentPageType === "bookmarks" ? "bookmarks" : "tweets";
+      if (statusText) {
+        statusText.innerHTML = `✅ Successfully synced ${data.count} ${itemLabel}! (Total: ${data.total}).`;
+      }
       
       if (container) {
         container.innerHTML = `
@@ -316,7 +380,8 @@ async function uploadScrapedBookmarks() {
         `;
         
         container.querySelector("#goToDashboardBtn").addEventListener("click", () => {
-          window.open(backendUrl, "_blank");
+          const redirectPath = currentPageType === "bookmarks" ? "/" : "/tweets";
+          window.open(backendUrl + redirectPath, "_blank");
         });
         
         container.querySelector("#syncAgainBtn").addEventListener("click", () => {
@@ -325,12 +390,14 @@ async function uploadScrapedBookmarks() {
       }
     } else {
       const errorMsg = (response && response.message) || "Connection error uploading data.";
-      statusText.innerHTML = `❌ Error: ${errorMsg}`;
+      if (statusText) {
+        statusText.innerHTML = `❌ Error: ${errorMsg}`;
+      }
       console.error("Sync failed:", response);
       
       if (container) {
         container.innerHTML = `
-          <button class="my-sync-btn my-sync-btn-primary" id="syncStartBtn">Sync Bookmarks</button>
+          <button class="my-sync-btn my-sync-btn-primary" id="syncStartBtn">${currentPageType === 'bookmarks' ? 'Sync Bookmarks' : 'Sync Profile Tweets'}</button>
         `;
         container.querySelector("#syncStartBtn").addEventListener("click", toggleScraping);
       }

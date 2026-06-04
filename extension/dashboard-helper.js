@@ -6,12 +6,13 @@ window.addEventListener("message", (event) => {
   if (event.source !== window) return;
 
   if (event.data && event.data.type === "MY_BOOKMARKS_AUTH") {
-    const { token, uid } = event.data;
+    const { token, uid, premium } = event.data;
     if (token && uid) {
       chrome.runtime.sendMessage({
         type: "SET_SESSION",
         firebaseIdToken: token,
         firebaseUid: uid,
+        premium: premium,
         backendUrl: window.location.origin
       }, (response) => {
         if (chrome.runtime.lastError) {

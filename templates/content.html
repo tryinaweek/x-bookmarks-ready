@@ -163,6 +163,15 @@
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
     Drafts
   </a>
+
+  {% if is_admin %}
+  <div class="sidebar-section">Admin</div>
+  <a href="/admin" class="sidebar-link">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg>
+    Admin Panel
+  </a>
+  {% endif %}
+
   <div class="sidebar-spacer"></div>
   <a href="/settings" class="sidebar-link">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -195,11 +204,36 @@
   {% endif %}
 
   <div class="page-header">
-    <h1 class="page-title">Tweet Performance</h1>
+    <div>
+      <h1 class="page-title">Tweet Performance{% if tweets_count %} ({{ tweets_count }}){% endif %}</h1>
+      {% if fetched_at %}
+      <div class="page-meta" style="font-size: 12px; color: #888; margin-top: 4px;">Last synced: {{ fetched_at[:10] }}</div>
+      {% endif %}
+    </div>
     {% if tweets %}
-    <form method="POST" action="/tweets/analyze" style="display:inline">
-      <button type="submit" class="btn btn-ai" onclick="this.textContent='Analyzing...'; this.style.opacity='0.6'; showLoading();">{% if analysis %}Re-analyze{% else %}Analyze Performance{% endif %}</button>
-    </form>
+    <div style="display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+      {% if premium_preview %}
+      <span class="preview-badge" style="font-size: 11px; font-weight: 600; color: #7c3aed; background: #f3e8ff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">
+        🔒 Free Preview (Up to 10 visible)
+      </span>
+      <a href="/checkout?type=upgrade" class="btn btn-ai" style="background:#7c3aed; color:#fff; text-decoration:none;">Unlock Dashboard ($9.00)</a>
+      <button type="button" class="btn btn-ai" style="opacity: 0.75;" onclick="openUpgradeModal()">Analyze Performance ⚡</button>
+      {% else %}
+      <span class="credits-badge" style="font-size: 11px; font-weight: 600; color: #7c3aed; background: #f3e8ff; padding: 4px 8px; border-radius: 4px; text-transform: uppercase;">
+        ⚡ <strong>{{ ai_credits }}</strong> AI Credit{{ 's' if ai_credits != 1 }} left
+      </span>
+      <a href="/checkout?type=refill" class="btn btn-secondary" style="border-color:#ddd6fe; color:#7c3aed; background:#faf5ff; text-decoration:none;">+ Refill Credits ($5.00)</a>
+      
+      {% if ai_credits > 0 %}
+      <form method="POST" action="/tweets/analyze" style="display:inline">
+        <button type="submit" class="btn btn-ai" onclick="this.textContent='Analyzing...'; this.style.opacity='0.6'; showLoading();">{% if analysis %}Re-analyze{% else %}Analyze Performance{% endif %}</button>
+      </form>
+      {% else %}
+      <button type="button" class="btn btn-ai" style="opacity: 0.75;" onclick="openRefillModal()">Analyze Performance ⚡</button>
+      {% endif %}
+      
+      {% endif %}
+    </div>
     {% endif %}
   </div>
 
@@ -356,6 +390,20 @@
           <td class="link"><a href="{{ tw.url }}" target="_blank">View</a></td>
         </tr>
         {% endfor %}
+        {% if premium_preview %}
+        <!-- Blurred placeholder rows -->
+        {% for i in range(1, 6) %}
+        <tr class="blurred-row" onclick="openUpgradeModal()" style="cursor: pointer;">
+          <td style="color:#ccc">{{ tweets|length + i }}</td>
+          <td class="tweet-text blurred-text">This is a premium tweet performance record that is locked. Upgrade to unlock full metrics and strategy analysis.</td>
+          <td class="date blurred-text">2026-06-03</td>
+          <td class="metric blurred-text">999</td>
+          <td class="metric blurred-text">145</td>
+          <td class="metric blurred-text">32</td>
+          <td class="link"><span class="lock-icon">🔒</span></td>
+        </tr>
+        {% endfor %}
+        {% endif %}
       </tbody>
     </table>
     </div>
@@ -366,6 +414,38 @@
   </div>
   {% endif %}
 
+</div>
+
+<!-- Upgrade Modal -->
+<div class="paywall-modal" id="upgradeModal">
+  <div class="paywall-modal-content">
+    <button class="paywall-modal-close" onclick="closeUpgradeModal()">&times;</button>
+    <div class="paywall-modal-icon">🔒</div>
+    <h2 class="paywall-modal-title">Unlock Premium Dashboard</h2>
+    <p class="paywall-modal-text">
+      Upgrade now to unlock all <strong>{{ tweets_count }}</strong> synced tweets, view details, and get <strong>3 AI Analyses</strong> to extract viral patterns and get content recommendations!
+    </p>
+    <div class="paywall-modal-actions">
+      <a href="/checkout?type=upgrade" class="btn btn-ai" style="padding:12px; font-size:14px; text-decoration:none;">Upgrade to Premium ($9.00 One-time)</a>
+      <button class="btn btn-secondary" onclick="closeUpgradeModal()">Keep Free Preview</button>
+    </div>
+  </div>
+</div>
+
+<!-- Refill Modal -->
+<div class="paywall-modal" id="refillModal">
+  <div class="paywall-modal-content">
+    <button class="paywall-modal-close" onclick="closeRefillModal()">&times;</button>
+    <div class="paywall-modal-icon">⚡</div>
+    <h2 class="paywall-modal-title">Out of AI Credits</h2>
+    <p class="paywall-modal-text">
+      You have used all your AI Analyses credits. Buy a refill pack of 10 analyses to continue analyzing your content and generating ideas!
+    </p>
+    <div class="paywall-modal-actions">
+      <a href="/checkout?type=refill" class="btn btn-ai" style="padding:12px; font-size:14px; text-decoration:none;">Buy 10 AI Credits ($5.00)</a>
+      <button class="btn btn-secondary" onclick="closeRefillModal()">Close</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -381,6 +461,18 @@ function copyDraft(btn, text) {
       btn.classList.remove('draft-copied');
     }, 2000);
   });
+}
+function openUpgradeModal() {
+  document.getElementById('upgradeModal').classList.add('show');
+}
+function closeUpgradeModal() {
+  document.getElementById('upgradeModal').classList.remove('show');
+}
+function openRefillModal() {
+  document.getElementById('refillModal').classList.add('show');
+}
+function closeRefillModal() {
+  document.getElementById('refillModal').classList.remove('show');
 }
 </script>
 </body>

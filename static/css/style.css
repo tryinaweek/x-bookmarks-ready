@@ -1360,3 +1360,67 @@ footer {
   border-bottom-color: var(--primary);
 }
 
+
+/* --- Suggestion Grid on Dashboard ----------------------------------------- */
+.suggestion-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-top: 12px;
+}
+@media (max-width: 768px) {
+  .suggestion-grid {
+    grid-template-columns: 1fr;
+  }
+}
+.suggestion-card {
+  border: 1px solid #f0f0f0;
+  border-radius: 12px;
+  padding: 16px;
+  background: #faf8ff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+.suggestion-card:hover {
+  border-color: #7c3aed;
+  box-shadow: 0 4px 12px rgba(124, 58, 237, 0.04);
+}
+.suggestion-topic {
+  font-weight: 700;
+  font-size: 14px;
+  color: #1a1a1a;
+  line-height: 1.4;
+}
+.suggestion-hook {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.5;
+  font-style: italic;
+  flex-grow: 1;
+}
+.suggestion-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+.suggestion-meta .badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+.badge-tweet {
+  background: #e8f4fd;
+  color: #1D9BF0;
+}
+.badge-thread {
+  background: #f3edff;
+  color: #7c3aed;
+}
+

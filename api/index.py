@@ -71,6 +71,26 @@ def inject_twitter_status():
     return dict(twitter_connected=twitter_connected)
 
 
+ADMIN_EMAILS = ["tryinaweek@gmail.com"]
+
+@app.context_processor
+def inject_admin_status():
+    email = session.get("email")
+    is_admin = False
+    if email:
+        is_admin = email in ADMIN_EMAILS
+        if not is_admin:
+            db_uid = session.get("db_user_id") or session.get("firebase_uid")
+            if db_uid and db:
+                try:
+                    profile = db.collection("users").document(db_uid).get()
+                    if profile.exists and profile.to_dict().get("admin"):
+                        is_admin = True
+                except Exception:
+                    pass
+    return dict(is_admin=is_admin)
+
+
 CLIENT_ID = os.environ.get("X_CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("X_CLIENT_SECRET", "")
 CLAUDE_API_KEY = os.environ.get("CLAUDE_API_KEY") or os.environ.get("ANTHROPIC_API_KEY") or ""
@@ -266,8 +286,16 @@ def db_merge_cache(table, user_id, new_data, last_id):
         merged = new_data + [item for item in existing if item["id"] not in existing_ids]
     else:
         merged = new_data
+    # Cap cache to 2,500 items to fit safely within Firestore 1 MiB limits
+    merged = merged[:2500]
     db_save_cache(table, user_id, merged, last_id)
+    if table == "bookmarks_cache":
+        try:
+            db.collection("users").document(user_id).update({"bookmarks_count": len(merged)})
+        except Exception:
+            pass
     return merged
+
 
 
 def db_save_analysis(user_id, analysis_type, data):
@@ -1184,6 +1212,17 @@ def login():
         else:
             session["username"] = decoded_token.get("name", "User")
             session["access_token"] = None
+            # Initialize user document in Firestore
+            try:
+                db.collection("users").document(uid).set({
+                    "email": decoded_token.get("email"),
+                    "username": decoded_token.get("name", "User"),
+                    "created_at": datetime.now(timezone.utc).isoformat(),
+                    "premium": False,
+                    "ai_credits": 0
+                })
+            except Exception as e:
+                print(f"Error initializing user profile on login: {e}")
             
         return json.dumps({"status": "success", "uid": uid}), 200
     except Exception as e:
@@ -1202,8 +1241,18 @@ def index():
     
     # Load user profile to check premium status & credits
     profile = _safe_db(db_load_profile, db_uid) or {}
-    premium = profile.get("premium", False)
-    ai_credits = profile.get("ai_credits", 0)
+    
+    # Check bypass and admin status
+    email = session.get("email")
+    is_admin_user = (email in ADMIN_EMAILS) or profile.get("admin", False)
+    bypass_paywall = profile.get("bypass_paywall", False)
+    
+    premium = profile.get("premium", False) or is_admin_user or bypass_paywall
+    if is_admin_user or bypass_paywall:
+        ai_credits = 9999
+    else:
+        ai_credits = profile.get("ai_credits", 0)
+        
     premium_preview = not premium
 
     # Check if Twitter is connected by checking for valid token
@@ -1221,7 +1270,7 @@ def index():
 
     original_bm_count = len(bm_data) if bm_data else 0
     if premium_preview and bm_data:
-        slice_limit = max(10, int(original_bm_count * 0.10))
+        slice_limit = 50
         bm_data_visible = bm_data[:slice_limit]
     else:
         bm_data_visible = bm_data
@@ -1341,10 +1390,73 @@ def extension_sync():
         else:
             merged = bookmarks
             
+        # Cap cache to 2,500 items to fit safely within Firestore 1 MiB limits
+        merged = merged[:2500]
         latest_id = merged[0]["id"] if merged else None
         db_save_cache("bookmarks_cache", uid, merged, latest_id)
         
+        # Update bookmarks_count on user document
+        try:
+            db.collection("users").document(uid).update({"bookmarks_count": len(merged)})
+        except Exception:
+            pass
+            
         return json.dumps({"status": "success", "count": len(bookmarks), "total": len(merged)}), 200
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/api/extension/sync-tweets", methods=["POST"])
+def extension_sync_tweets():
+    """Endpoint for Chrome Extension to upload scraped tweets from profile pages."""
+    auth_header = request.headers.get("Authorization")
+    if not auth_header or not auth_header.startswith("Bearer "):
+        return json.dumps({"status": "error", "message": "Missing or invalid authorization header"}), 401
+    
+    id_token = auth_header.split("Bearer ")[1]
+    try:
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token["uid"]
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Token verification failed: {e}"}), 401
+        
+    data = request.json or {}
+    tweets = data.get("tweets", [])
+    
+    if not tweets:
+        return json.dumps({"status": "success", "count": 0, "total": 0}), 200
+        
+    try:
+        # Check user profile for premium status
+        profile = db.collection("users").document(uid).get()
+        is_premium = False
+        if profile.exists:
+            ud = profile.to_dict()
+            is_premium_user = ud.get("premium", False) or ud.get("admin", False) or ud.get("bypass_paywall", False)
+            if not is_premium_user:
+                email = ud.get("email")
+                if email in ADMIN_EMAILS:
+                    is_premium_user = True
+            is_premium = is_premium_user
+            
+        limit = 50 if is_premium else 10
+        # Slice input tweets to limit
+        tweets = tweets[:limit]
+        
+        existing_data, _, _ = db_load_cache_full("tweets_cache", uid)
+        if existing_data:
+            existing_ids = {item["id"] for item in existing_data}
+            new_tweets = [item for item in tweets if item["id"] not in existing_ids]
+            merged = new_tweets + existing_data
+        else:
+            merged = tweets
+            
+        # Cap cache to limit
+        merged = merged[:limit]
+        latest_id = merged[0]["id"] if merged else None
+        db_save_cache("tweets_cache", uid, merged, latest_id)
+        
+        return json.dumps({"status": "success", "count": len(tweets), "total": len(merged)}), 200
     except Exception as e:
         return json.dumps({"status": "error", "message": str(e)}), 500
 
@@ -1413,8 +1525,18 @@ def bookmarks_view():
     
     # Load user profile to check premium status & credits
     profile = _safe_db(db_load_profile, db_uid) or {}
-    premium = profile.get("premium", False)
-    ai_credits = profile.get("ai_credits", 0)
+    
+    # Check bypass and admin status
+    email = session.get("email")
+    is_admin_user = (email in ADMIN_EMAILS) or profile.get("admin", False)
+    bypass_paywall = profile.get("bypass_paywall", False)
+    
+    premium = profile.get("premium", False) or is_admin_user or bypass_paywall
+    if is_admin_user or bypass_paywall:
+        ai_credits = 9999
+    else:
+        ai_credits = profile.get("ai_credits", 0)
+        
     premium_preview = not premium
 
     bookmarks, _, fetched = (None, None, None)
@@ -1425,7 +1547,7 @@ def bookmarks_view():
 
     original_bm_count = len(bookmarks) if bookmarks else 0
     if premium_preview and bookmarks:
-        slice_limit = max(10, int(original_bm_count * 0.10))
+        slice_limit = 50
         bookmarks_visible = bookmarks[:slice_limit]
     else:
         bookmarks_visible = bookmarks
@@ -1444,9 +1566,13 @@ def bookmarks_analyze():
     
     # Check premium status and credits
     profile = _safe_db(db_load_profile, db_uid) or {}
-    premium = profile.get("premium", False)
+    
+    email = session.get("email")
+    is_admin_user = (email in ADMIN_EMAILS) or profile.get("admin", False)
+    bypass_paywall = profile.get("bypass_paywall", False)
+    
+    premium = profile.get("premium", False) or is_admin_user or bypass_paywall
     ai_credits = profile.get("ai_credits", 0)
-    premium_preview = not premium
 
     bookmarks, _, fetched = db_load_cache_full("bookmarks_cache", db_uid)
     if not bookmarks:
@@ -1454,21 +1580,25 @@ def bookmarks_analyze():
 
     if not premium:
         # Sliced preview for free users
-        slice_limit = max(10, int(len(bookmarks) * 0.10))
+        slice_limit = 50
         return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
                                bookmarks=bookmarks[:slice_limit], analysis=None, fetched_at=fetched,
                                premium_preview=True, ai_credits=ai_credits, bookmarks_count=len(bookmarks),
                                error="Please upgrade to Premium to analyze your bookmarks with AI!")
 
-    if ai_credits <= 0:
-        return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
-                               bookmarks=bookmarks, analysis=None, fetched_at=fetched,
-                               premium_preview=False, ai_credits=ai_credits, bookmarks_count=len(bookmarks),
-                               error="Out of AI credits! Please buy a refill pack to run more analyses.")
-
-    # Deduct 1 credit
-    new_credits = ai_credits - 1
-    _safe_db(db.collection("users").document(db_uid).update, {"ai_credits": new_credits})
+    # Check and deduct credit if NOT admin and NOT bypass
+    if not is_admin_user and not bypass_paywall:
+        if ai_credits <= 0:
+            return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
+                                   bookmarks=bookmarks, analysis=None, fetched_at=fetched,
+                                   premium_preview=False, ai_credits=ai_credits, bookmarks_count=len(bookmarks),
+                                   error="Out of AI credits! Please buy a refill pack to run more analyses.")
+        # Deduct 1 credit
+        new_credits = ai_credits - 1
+        _safe_db(db.collection("users").document(db_uid).update, {"ai_credits": new_credits})
+        display_credits = new_credits
+    else:
+        display_credits = 9999
 
     analysis, ai_error = analyze_bookmarks(bookmarks, session.get("username", ""))
     if analysis:
@@ -1477,7 +1607,7 @@ def bookmarks_analyze():
     
     return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
                            bookmarks=bookmarks, analysis=analysis, fetched_at=fetched, error=error,
-                           premium_preview=False, ai_credits=new_credits, bookmarks_count=len(bookmarks))
+                           premium_preview=False, ai_credits=display_credits, bookmarks_count=len(bookmarks))
 
 
 @app.route("/bookmarks/download", methods=["POST"])
@@ -1509,7 +1639,7 @@ def checkout():
                     "name": "10 AI Analysis Credits Refill",
                     "description": "Refills your dashboard with 10 extra AI analyses.",
                 },
-                "unit_amount": 199,
+                "unit_amount": 500,
             },
             "quantity": 1,
         }]
@@ -1617,19 +1747,55 @@ def stripe_webhook():
     return "Success", 200
 
 
+def is_premium_user():
+    db_uid = ensure_db_uid()
+    if not db_uid:
+        return False
+    profile = _safe_db(db_load_profile, db_uid) or {}
+    email = session.get("email")
+    is_admin_user = (email in ADMIN_EMAILS) or profile.get("admin", False)
+    bypass_paywall = profile.get("bypass_paywall", False)
+    return profile.get("premium", False) or is_admin_user or bypass_paywall
+
+
 @app.route("/tweets")
 def tweets_view():
     if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
+    
+    # Load user profile to check premium status & credits
+    profile = _safe_db(db_load_profile, db_uid) or {}
+    
+    email = session.get("email")
+    is_admin_user = (email in ADMIN_EMAILS) or profile.get("admin", False)
+    bypass_paywall = profile.get("bypass_paywall", False)
+    
+    premium = profile.get("premium", False) or is_admin_user or bypass_paywall
+    if is_admin_user or bypass_paywall:
+        ai_credits = 9999
+    else:
+        ai_credits = profile.get("ai_credits", 0)
+        
+    premium_preview = not premium
+    
     tweets, _, fetched = (None, None, None)
     try:
         tweets, _, fetched = db_load_cache_full("tweets_cache", db_uid)
     except Exception:
         pass
+        
+    original_tw_count = len(tweets) if tweets else 0
+    if premium_preview and tweets:
+        slice_limit = 10
+        tweets_visible = tweets[:slice_limit]
+    else:
+        tweets_visible = tweets
+        
     analysis = _safe_db(db_load_analysis, db_uid, "tweets")
     return render_template("content.html", connected=True, username=session.get("username", ""),
-                           tweets=tweets, analysis=analysis, fetched_at=fetched)
+                           tweets=tweets_visible, tweets_count=original_tw_count, analysis=analysis, fetched_at=fetched,
+                           premium_preview=premium_preview, ai_credits=ai_credits)
 
 
 @app.route("/tweets/analyze", methods=["POST"])
@@ -1637,21 +1803,59 @@ def tweets_analyze():
     if not session.get("firebase_uid"):
         return redirect("/")
     db_uid = ensure_db_uid()
+    
+    # Check premium status and credits
+    profile = _safe_db(db_load_profile, db_uid) or {}
+    
+    email = session.get("email")
+    is_admin_user = (email in ADMIN_EMAILS) or profile.get("admin", False)
+    bypass_paywall = profile.get("bypass_paywall", False)
+    
+    premium = profile.get("premium", False) or is_admin_user or bypass_paywall
+    ai_credits = profile.get("ai_credits", 0)
+    
     tweets, _, fetched = db_load_cache_full("tweets_cache", db_uid)
     if not tweets:
         return redirect("/tweets")
+        
+    if not premium:
+        # Sliced preview for free users
+        slice_limit = 10
+        return render_template("content.html", connected=True, username=session.get("username", ""),
+                               tweets=tweets[:slice_limit], tweets_count=len(tweets), analysis=None, fetched_at=fetched,
+                               premium_preview=True, ai_credits=ai_credits,
+                               error="Please upgrade to Premium to analyze your content with AI!")
+                               
+    # Check and deduct credit if NOT admin and NOT bypass
+    if not is_admin_user and not bypass_paywall:
+        if ai_credits <= 0:
+            return render_template("content.html", connected=True, username=session.get("username", ""),
+                                   tweets=tweets, tweets_count=len(tweets), analysis=None, fetched_at=fetched,
+                                   premium_preview=False, ai_credits=ai_credits,
+                                   error="Out of AI credits! Please buy a refill pack to run more analyses.")
+        # Deduct 1 credit
+        new_credits = ai_credits - 1
+        _safe_db(db.collection("users").document(db_uid).update, {"ai_credits": new_credits})
+        display_credits = new_credits
+    else:
+        display_credits = 9999
+        
     analysis, ai_error = analyze_tweets(tweets, session.get("username", ""))
     if analysis:
         _safe_db(db_save_analysis, db_uid, "tweets", analysis)
     error = f"AI error: {ai_error}" if ai_error else None
+    
     return render_template("content.html", connected=True, username=session.get("username", ""),
-                           tweets=tweets, analysis=analysis, fetched_at=fetched, error=error)
+                           tweets=tweets, tweets_count=len(tweets), analysis=analysis, fetched_at=fetched, error=error,
+                           premium_preview=False, ai_credits=display_credits)
 
 
 @app.route("/compose")
 def compose():
     if not session.get("firebase_uid"):
         return redirect("/")
+    if not is_premium_user():
+        return redirect("/?error=premium_required")
     db_uid = ensure_db_uid()
     suggestions = _safe_db(db_load_suggestions, db_uid)
     drafts_list = _safe_db(db_load_drafts, db_uid, "draft") or []
@@ -1666,6 +1870,8 @@ def compose():
 def compose_suggestions():
     if not session.get("firebase_uid"):
         return redirect("/")
+    if not is_premium_user():
+        return redirect("/?error=premium_required")
     db_uid = ensure_db_uid()
     suggestions = generate_smart_suggestions(session.get("username", ""), db_uid)
     if suggestions:
@@ -1679,6 +1885,8 @@ def compose_suggestions():
 def compose_generate():
     if not session.get("firebase_uid"):
         return redirect("/")
+    if not is_premium_user():
+        return redirect("/?error=premium_required")
     idea = request.form.get("idea", "").strip()
     format_type = request.form.get("format", "tweet")
     platform = request.form.get("platform", "x")
@@ -1696,6 +1904,8 @@ def compose_generate():
 def compose_save():
     if not session.get("firebase_uid"):
         return redirect("/")
+    if not is_premium_user():
+        return redirect("/?error=premium_required")
     db_uid = ensure_db_uid()
     tweets_json = request.form.get("tweets", "[]")
     topic = request.form.get("topic", "")
@@ -1718,12 +1928,16 @@ def compose_save():
 def compose_delete(draft_id):
     if not session.get("firebase_uid"):
         return redirect("/")
+    if not is_premium_user():
+        return redirect("/?error=premium_required")
     db_delete_draft(draft_id, session.get("db_user_id"))
     return redirect("/compose")
 
 
 @app.route("/compose/post", methods=["POST"])
 def compose_post():
+    if not is_premium_user():
+        return redirect("/?error=premium_required")
     db_uid = ensure_db_uid()
     token = get_valid_twitter_token(db_uid)
     if not token:
@@ -1762,6 +1976,8 @@ def compose_post():
 def compose_schedule():
     if not session.get("firebase_uid"):
         return redirect("/")
+    if not is_premium_user():
+        return redirect("/?error=premium_required")
     db_uid = ensure_db_uid()
     tweets_json = request.form.get("tweets", "[]")
     topic = request.form.get("topic", "")
@@ -1786,6 +2002,8 @@ def compose_schedule():
 def calendar_view():
     if not session.get("firebase_uid"):
         return redirect("/")
+    if not is_premium_user():
+        return redirect("/?error=premium_required")
     db_uid = ensure_db_uid()
     # Avoid composite index requirements by querying simply and sorting/limiting in-memory
     try:
@@ -1890,6 +2108,8 @@ def calendar_delete(draft_id):
 def drafts_view():
     if not session.get("firebase_uid"):
         return redirect("/")
+    if not is_premium_user():
+        return redirect("/?error=premium_required")
     db_uid = ensure_db_uid()
     all_drafts = db_load_drafts(db_uid) or []
     draft_list = [d for d in all_drafts if d.get("status") == "draft"]
@@ -2014,6 +2234,273 @@ def run_cron():
             results.append({"draft_id": draft_id, "status": "posted", "ids": posted})
 
     return json.dumps({"status": "ok", "processed": len(due_docs), "results": results}), 200
+
+
+# -- Admin Dashboard Routes ---------------------------------------------------
+
+@app.route("/admin")
+def admin_view():
+    email = session.get("email")
+    db_uid = session.get("db_user_id") or session.get("firebase_uid")
+    is_admin = (email in ADMIN_EMAILS)
+    if not is_admin and db_uid:
+        try:
+            p = db.collection("users").document(db_uid).get()
+            if p.exists and p.to_dict().get("admin"):
+                is_admin = True
+        except Exception:
+            pass
+            
+    if not is_admin:
+        return redirect("/")
+        
+    try:
+        users_ref = db.collection("users").get()
+        total_users = 0
+        premium_count = 0
+        bypass_count = 0
+        total_bookmarks = 0
+        users_list = []
+        
+        # 7 days threshold for active check
+        import dateutil.parser
+        now = datetime.now(timezone.utc)
+        active_count = 0
+        
+        for doc in users_ref:
+            u = doc.to_dict()
+            total_users += 1
+            user_email = u.get("email", "")
+            
+            is_u_premium = u.get("premium", False)
+            is_u_bypass = u.get("bypass_paywall", False)
+            is_u_admin = (user_email in ADMIN_EMAILS) or u.get("admin", False)
+            
+            if is_u_premium:
+                premium_count += 1
+            if is_u_bypass:
+                bypass_count += 1
+                
+            total_bookmarks += u.get("bookmarks_count", 0)
+            
+            # Active check
+            is_active = False
+            updated_at_str = u.get("updated_at")
+            if updated_at_str:
+                try:
+                    updated_at_dt = dateutil.parser.isoparse(updated_at_str)
+                    if (now - updated_at_dt).days <= 7:
+                        is_active = True
+                        active_count += 1
+                except Exception:
+                    pass
+            
+            users_list.append({
+                "id": doc.id,
+                "email": user_email,
+                "username": u.get("username", "User"),
+                "name": u.get("name", ""),
+                "created_at": u.get("created_at", "")[:10] if u.get("created_at") else "N/A",
+                "premium": is_u_premium,
+                "bypass_paywall": is_u_bypass,
+                "admin": is_u_admin,
+                "bookmarks_count": u.get("bookmarks_count", 0)
+            })
+            
+        # Estimate revenue ($9 per premium user, excluding bypass)
+        estimated_revenue = (premium_count - bypass_count) * 9.00
+        if estimated_revenue < 0:
+            estimated_revenue = 0
+            
+        # Sort users by email so they are consistently ordered
+        users_list = sorted(users_list, key=lambda x: x["email"].lower())
+            
+    except Exception as e:
+        print(f"Error loading admin dashboard stats: {e}")
+        total_users = 0
+        premium_count = 0
+        bypass_count = 0
+        active_count = 0
+        total_bookmarks = 0
+        estimated_revenue = 0.0
+        users_list = []
+        
+    return render_template("admin.html", connected=True, username=session.get("username", ""),
+                           total_users=total_users, premium_count=premium_count, active_count=active_count,
+                           total_bookmarks=total_bookmarks, estimated_revenue=estimated_revenue,
+                           users=users_list)
+
+
+@app.route("/admin/users/toggle-premium", methods=["POST"])
+def admin_toggle_premium():
+    email = session.get("email")
+    db_uid = session.get("db_user_id") or session.get("firebase_uid")
+    is_admin = (email in ADMIN_EMAILS)
+    if not is_admin and db_uid:
+        try:
+            p = db.collection("users").document(db_uid).get()
+            if p.exists and p.to_dict().get("admin"):
+                is_admin = True
+        except Exception:
+            pass
+    if not is_admin:
+        return json.dumps({"status": "error", "message": "Unauthorized"}), 403
+        
+    data = request.json or {}
+    target_uid = data.get("userId")
+    if not target_uid:
+        return json.dumps({"status": "error", "message": "Missing userId"}), 400
+        
+    try:
+        user_ref = db.collection("users").document(target_uid)
+        u_doc = user_ref.get()
+        if not u_doc.exists:
+            return json.dumps({"status": "error", "message": "User not found"}), 404
+            
+        u_data = u_doc.to_dict()
+        current_bypass = u_data.get("bypass_paywall", False)
+        new_bypass = not current_bypass
+        user_ref.update({"bypass_paywall": new_bypass})
+        return json.dumps({"status": "success", "bypass_paywall": new_bypass}), 200
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/admin/users/toggle-admin", methods=["POST"])
+def admin_toggle_admin():
+    email = session.get("email")
+    db_uid = session.get("db_user_id") or session.get("firebase_uid")
+    is_admin = (email in ADMIN_EMAILS)
+    if not is_admin and db_uid:
+        try:
+            p = db.collection("users").document(db_uid).get()
+            if p.exists and p.to_dict().get("admin"):
+                is_admin = True
+        except Exception:
+            pass
+    if not is_admin:
+        return json.dumps({"status": "error", "message": "Unauthorized"}), 403
+        
+    data = request.json or {}
+    target_uid = data.get("userId")
+    if not target_uid:
+        return json.dumps({"status": "error", "message": "Missing userId"}), 400
+        
+    try:
+        user_ref = db.collection("users").document(target_uid)
+        u_doc = user_ref.get()
+        if not u_doc.exists:
+            return json.dumps({"status": "error", "message": "User not found"}), 404
+            
+        u_data = u_doc.to_dict()
+        current_admin = u_data.get("admin", False)
+        new_admin = not current_admin
+        user_ref.update({"admin": new_admin})
+        return json.dumps({"status": "success", "admin": new_admin}), 200
+    except Exception as e:
+        return json.dumps({"status": "error", "message": str(e)}), 500
+
+
+@app.route("/admin/email-blast", methods=["POST"])
+def admin_email_blast():
+    email = session.get("email")
+    db_uid = session.get("db_user_id") or session.get("firebase_uid")
+    is_admin = (email in ADMIN_EMAILS)
+    if not is_admin and db_uid:
+        try:
+            p = db.collection("users").document(db_uid).get()
+            if p.exists and p.to_dict().get("admin"):
+                is_admin = True
+        except Exception:
+            pass
+    if not is_admin:
+        return json.dumps({"status": "error", "message": "Unauthorized"}), 403
+
+    data = request.json or {}
+    segment = data.get("segment")
+    subject = data.get("subject")
+    body = data.get("body")
+    
+    if not segment or not subject or not body:
+        return json.dumps({"status": "error", "message": "Missing fields"}), 400
+
+    try:
+        users_ref = db.collection("users").get()
+        target_emails = []
+        
+        import dateutil.parser
+        now = datetime.now(timezone.utc)
+        
+        for doc in users_ref:
+            u = doc.to_dict()
+            user_email = u.get("email")
+            if not user_email:
+                continue
+                
+            is_u_premium = u.get("premium", False) or u.get("bypass_paywall", False) or (user_email in ADMIN_EMAILS) or u.get("admin", False)
+            
+            is_active = False
+            updated_at_str = u.get("updated_at")
+            if updated_at_str:
+                try:
+                    updated_at_dt = dateutil.parser.isoparse(updated_at_str)
+                    if (now - updated_at_dt).days <= 7:
+                        is_active = True
+                except Exception:
+                    pass
+                    
+            if segment == "all":
+                target_emails.append(user_email)
+            elif segment == "active" and is_active:
+                target_emails.append(user_email)
+            elif segment == "inactive" and not is_active:
+                target_emails.append(user_email)
+            elif segment == "paid" and is_u_premium:
+                target_emails.append(user_email)
+            elif segment == "unpaid" and not is_u_premium:
+                target_emails.append(user_email)
+                
+        if not target_emails:
+            return json.dumps({"status": "success", "sent": 0, "message": "No users found in this segment"}), 200
+
+        resend_api_key = os.environ.get("RESEND_API_KEY")
+        mock_mode = not bool(resend_api_key)
+        
+        sent_count = 0
+        if mock_mode:
+            print(f"\n--- [MOCK EMAIL BLAST] Segment: {segment} ---")
+            print(f"Subject: {subject}")
+            print(f"Recipients: {', '.join(target_emails)}")
+            print(f"Content:\n{body}")
+            print("-------------------------------------------\n")
+            sent_count = len(target_emails)
+        else:
+            headers = {
+                "Authorization": f"Bearer {resend_api_key}",
+                "Content-Type": "application/json"
+            }
+            for rec_email in target_emails:
+                payload = {
+                    "from": "MyBookmarks Admin <admin@xbookmarksync.com>",
+                    "to": rec_email,
+                    "subject": subject,
+                    "html": f"<div style='font-family:sans-serif; line-height:1.6;'>{body.replace(chr(10), '<br>')}</div>"
+                }
+                r = req_lib.post("https://api.resend.com/emails", json=payload, headers=headers)
+                if r.status_code == 200 or r.status_code == 201:
+                    sent_count += 1
+                else:
+                    print(f"Resend send failed for {rec_email}: {r.text}")
+                    
+        return json.dumps({
+            "status": "success",
+            "sent": sent_count,
+            "mock": mock_mode,
+            "message": f"Successfully sent blast to {sent_count} user(s)."
+        }), 200
+        
+    except Exception as e:
+        return json.dumps({"status": "error", "message": f"Failed to run blast: {e}"}), 500
 
 
 @app.route("/logout")
