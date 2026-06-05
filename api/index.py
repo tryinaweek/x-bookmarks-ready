@@ -174,6 +174,12 @@ def check_startup_error():
         </html>
         """, 500
 
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template("404.html"), 404
+
+
 OWNER_X_ID = os.environ.get("OWNER_X_ID", "25914613")  # Your X user ID - full access
 
 AUTH_URL = "https://twitter.com/i/oauth2/authorize"
