@@ -106,65 +106,7 @@
       border-radius: 50%;
     }
 
-    /* AI Response Box */
-    .ai-response-box {
-      background: #fff;
-      border: 1px solid var(--primary-light);
-      border-left: 4px solid var(--primary);
-      border-radius: var(--radius-sm);
-      padding: 20px;
-      margin-top: 16px;
-      box-shadow: var(--shadow-sm);
-      animation: slideDown 0.3s ease;
-    }
-    .ai-response-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 12px;
-      font-size: 14px;
-      font-weight: 600;
-      color: var(--text);
-      border-bottom: 1px solid var(--border-light);
-      padding-bottom: 8px;
-    }
-    .ai-spark-icon {
-      margin-right: 6px;
-    }
-    .ai-response-close {
-      background: none;
-      border: none;
-      font-size: 20px;
-      color: var(--text-muted);
-      cursor: pointer;
-    }
-    .ai-response-close:hover {
-      color: var(--danger);
-    }
-    .ai-response-body {
-      font-size: 14px;
-      line-height: 1.6;
-      color: #374151;
-    }
-    .ai-response-body h1, .ai-response-body h2, .ai-response-body h3 {
-      color: var(--text);
-      margin-top: 16px;
-      margin-bottom: 8px;
-      font-weight: 700;
-    }
-    .ai-response-body h2 { font-size: 16px; }
-    .ai-response-body h3 { font-size: 14px; }
-    .ai-response-body p { margin-bottom: 12px; }
-    .ai-response-body ul, .ai-response-body ol { margin-left: 20px; margin-bottom: 12px; }
-    .ai-response-body li { margin-bottom: 4px; }
-    .ai-response-body a { color: var(--primary); text-decoration: none; font-weight: 500; }
-    .ai-response-body a:hover { text-decoration: underline; }
-    .ai-response-body blockquote {
-      border-left: 4px solid #d1d5db;
-      padding-left: 12px;
-      color: var(--text-muted);
-      margin: 12px 0;
-    }
+
 
     /* Daily Spark */
     .daily-gems-grid {
@@ -659,29 +601,96 @@ function closeDashboardAiResponse() {
 
 function formatMarkdown(text) {
   if (!text) return "";
-  let html = text
+  
+  let escaped = text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
   
-  html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.+<\/li>)/s, '<ul>$1</ul>');
-  
-  html = html.replace(/^\s*###\s+(.+)$/gm, '<h3>$1</h3>');
-  html = html.replace(/^\s*##\s+(.+)$/gm, '<h2>$1</h2>');
-  
-  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
-  html = html.split(/\n\n+/).map(p => {
-    p = p.trim();
-    if (!p) return "";
-    if (p.startsWith('<ul>') || p.startsWith('<h3>') || p.startsWith('<h2>')) return p;
-    return `<p>${p}</p>`;
-  }).join('\n');
+  let lines = escaped.split('\n');
+  let resultHtml = [];
+  let inList = false;
+  let inBlockquote = false;
 
-  html = html.replace(/\[@(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:var(--primary); font-weight:600; text-decoration:underline;">@$1</a>');
+  for (let i = 0; i < lines.length; i++) {
+    let line = lines[i].trim();
+    
+    // Check for Horizontal Rule
+    if (line === '---' || line === '***' || line === '___') {
+      if (inList) { resultHtml.push('</ul>'); inList = false; }
+      if (inBlockquote) { resultHtml.push('</div>'); inBlockquote = false; }
+      resultHtml.push('<hr>');
+      continue;
+    }
+    
+    // Check for Headings (# to ######)
+    let headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    if (headingMatch) {
+      if (inList) { resultHtml.push('</ul>'); inList = false; }
+      if (inBlockquote) { resultHtml.push('</div>'); inBlockquote = false; }
+      let level = headingMatch[1].length;
+      let content = headingMatch[2];
+      content = parseInlineMarkdown(content);
+      resultHtml.push(`<h${level}>${content}</h${level}>`);
+      continue;
+    }
+    
+    // Check for Blockquote
+    let blockquoteMatch = line.match(/^&gt;\s*(.*)$/);
+    if (blockquoteMatch) {
+      if (inList) { resultHtml.push('</ul>'); inList = false; }
+      let content = blockquoteMatch[1];
+      content = parseInlineMarkdown(content);
+      if (!inBlockquote) {
+        resultHtml.push('<div class="blockquote-style">');
+        inBlockquote = true;
+      }
+      resultHtml.push(content + '<br>');
+      continue;
+    } else if (inBlockquote) {
+      resultHtml.push('</div>');
+      inBlockquote = false;
+    }
+    
+    // Check for Bullet Lists
+    let listMatch = line.match(/^[\-\*\+]\s+(.+)$/);
+    if (listMatch) {
+      let content = listMatch[1];
+      content = parseInlineMarkdown(content);
+      if (!inList) {
+        resultHtml.push('<ul>');
+        inList = true;
+      }
+      resultHtml.push(`<li>${content}</li>`);
+      continue;
+    } else if (inList) {
+      resultHtml.push('</ul>');
+      inList = false;
+    }
+    
+    // Plain text / Paragraphs
+    if (line === '') {
+      continue;
+    }
+    
+    let content = parseInlineMarkdown(line);
+    resultHtml.push(`<p>${content}</p>`);
+  }
+  
+  if (inList) resultHtml.push('</ul>');
+  if (inBlockquote) resultHtml.push('</div>');
+  
+  return resultHtml.join('\n');
+}
 
-  return html;
+function parseInlineMarkdown(text) {
+  // Bold
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Citations [@username](url)
+  text = text.replace(/\[@(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank">@$1</a>');
+  
+  return text;
 }
 
 function toggleGemStar(btn, gemId) {
