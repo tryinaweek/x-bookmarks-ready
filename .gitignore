@@ -5,3 +5,4 @@ __pycache__/
 .vercel
 service-account.json
 
+.gstack/

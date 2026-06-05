@@ -5,6 +5,293 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Bookmarks - MyBookmarks</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    /* Bookmarks Tab Navigation */
+    .tab-bar-nav {
+      display: flex;
+      border-bottom: 1px solid var(--border);
+      gap: 4px;
+      margin-bottom: 24px;
+    }
+    .tab-nav-btn {
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    .tab-nav-btn:hover {
+      color: var(--text);
+      background: var(--border-light);
+      border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+    }
+    .tab-nav-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    .bookmarks-tab-content {
+      display: none;
+    }
+    .bookmarks-tab-content.active {
+      display: block;
+    }
+
+    /* Split Drawer Styling */
+    .split-drawer {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      z-index: 1000;
+      display: flex;
+      justify-content: flex-end;
+      animation: fadeIn 0.2s ease;
+    }
+    .drawer-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.4);
+      backdrop-filter: blur(4px);
+    }
+    .drawer-content {
+      position: relative;
+      width: 90%;
+      max-width: 1100px;
+      height: 100%;
+      background: #fff;
+      box-shadow: -4px 0 24px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      animation: slideLeft 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .drawer-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .drawer-header h2 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .drawer-close-btn {
+      background: none;
+      border: none;
+      font-size: 24px;
+      cursor: pointer;
+      color: var(--text-muted);
+    }
+    .drawer-close-btn:hover { color: var(--danger); }
+
+    .drawer-body {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      height: calc(100% - 65px);
+    }
+    @media (max-width: 800px) {
+      .drawer-body { grid-template-columns: 1fr; }
+      .drawer-right { display: none; }
+    }
+
+    .drawer-left {
+      border-right: 1px solid var(--border-light);
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+    .drawer-right {
+      background: var(--bg);
+      padding: 24px;
+      overflow-y: auto;
+    }
+    .drawer-right h3 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* Drawer Tabs */
+    .drawer-tabs {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 8px;
+    }
+    .drawer-tab-btn {
+      background: none;
+      border: none;
+      padding: 6px 12px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+      transition: all 0.15s ease;
+    }
+    .drawer-tab-btn.active {
+      background: var(--primary-light);
+      color: var(--primary);
+    }
+
+    .drawer-subtab-content {
+      display: none;
+      flex: 1;
+      line-height: 1.6;
+      font-size: 14px;
+    }
+    .drawer-subtab-content.active {
+      display: block;
+    }
+
+    /* Tweets Feed inside drawer */
+    .tweets-feed {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .feed-tweet-card {
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 14px;
+      box-shadow: var(--shadow-sm);
+    }
+    .feed-tweet-header {
+      font-size: 11px;
+      color: var(--text-muted);
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .feed-tweet-text {
+      font-size: 13px;
+      color: var(--text);
+      margin-bottom: 10px;
+      white-space: pre-wrap;
+    }
+    .feed-tweet-footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+    }
+
+    /* Resource Hub link styles */
+    .links-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .resource-link-card {
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      transition: border-color 0.2s, background-color 0.2s;
+    }
+    .resource-link-card:hover {
+      border-color: var(--primary);
+      background: #fff;
+    }
+    .resource-link-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 450px;
+    }
+    .resource-link-meta {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* Notes, Stars, Archives */
+    .star-icon-btn, .archive-icon-btn {
+      background: none;
+      border: none;
+      font-size: 16px;
+      cursor: pointer;
+      color: var(--text-light);
+      transition: transform 0.1s ease, color 0.15s ease;
+    }
+    .star-icon-btn:hover { color: #f59e0b; transform: scale(1.1); }
+    .star-icon-btn.active { color: #f59e0b; }
+    .archive-icon-btn:hover { color: var(--danger); transform: scale(1.1); }
+
+    .note-btn {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 4px 8px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text-muted);
+      transition: all 0.15s ease;
+    }
+    .note-btn:hover {
+      border-color: var(--primary);
+      color: var(--primary);
+      background: #fff;
+    }
+    .note-text-display {
+      font-size: 11px;
+      color: var(--primary-hover);
+      background: var(--primary-light);
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-top: 4px;
+      display: inline-block;
+      cursor: pointer;
+    }
+
+    /* Ask AI Console inside Bookmarks */
+    .ask-tab-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 28px;
+      box-shadow: var(--shadow);
+    }
+    .ask-tab-header {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-top: 0;
+      margin-bottom: 8px;
+    }
+    .ask-tab-sub {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes slideLeft { from { transform: translateX(100%); } to { transform: translateX(0); } }
+  </style>
 </head>
 <body>
 
@@ -25,24 +312,6 @@
   <a href="/bookmarks" class="sidebar-link active">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
     Bookmarks
-  </a>
-  <a href="/tweets" class="sidebar-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    Tweets
-  </a>
-  <div class="sidebar-section">Create</div>
-  <a href="/compose" class="sidebar-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    Compose
-  </a>
-
-  <a href="/calendar" class="sidebar-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    Calendar
-  </a>
-  <a href="/drafts" class="sidebar-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-    Drafts
   </a>
 
   {% if is_admin %}
@@ -136,141 +405,218 @@
   </div>
   {% endif %}
 
-  {% if analysis %}
-  <div class="card">
-    <h2>AI Analysis</h2>
-    {% if analysis.summary %}<div class="summary-box">{{ analysis.summary }}</div>{% endif %}
+  {% if bookmarks %}
+  <!-- Tab Navigation -->
+  <div class="tab-bar-nav">
+    <button class="tab-nav-btn active" id="nav-tab-vaults" onclick="switchBookmarksTab('vaults')">📚 Knowledge Vaults</button>
+    <button class="tab-nav-btn" id="nav-tab-table" onclick="switchBookmarksTab('table')">📋 All Bookmarks</button>
+    <button class="tab-nav-btn" id="nav-tab-qa" onclick="switchBookmarksTab('qa')">⚡ Ask Assistant</button>
+  </div>
 
-    {% if analysis.categories %}
-    <div class="analysis-section">
-      <h3>Categories <span style="font-weight:400; font-size:11px; color:#888;">(click to filter)</span></h3>
-      <div class="category-grid">
-        {% for cat in analysis.categories %}
-        <div class="category-card" onclick="filterByCategory(this, {{ cat.bookmark_ids | tojson }}, '{{ cat.name }}')" data-name="{{ cat.name }}">
-          <div class="category-name">{{ cat.name }}</div>
-          <div class="category-count">{{ cat.count }} bookmark{{ 's' if cat.count != 1 }}</div>
-          <div class="category-summary">{{ cat.summary }}</div>
+  <!-- Tab 1: Knowledge Directory (Vaults) -->
+  <div id="tab-content-vaults" class="bookmarks-tab-content active">
+    {% if analysis %}
+    <div class="card" style="margin-bottom:24px;">
+      <h2>AI Learning Synthesis</h2>
+      {% if analysis.summary %}<div class="summary-box" style="margin-bottom:24px;">{{ analysis.summary }}</div>{% endif %}
+
+      {% if analysis.categories %}
+      <div class="analysis-section">
+        <h3>Directory Category Vaults <span style="font-weight:400; font-size:11px; color:#888;">(click to explore vault)</span></h3>
+        <div class="category-grid">
+          {% for cat in analysis.categories %}
+          <div class="category-card" onclick="openCategoryVault('{{ cat.name }}', {{ cat.bookmark_ids | tojson }}, '{{ cat.summary | replace("'", "\\'") | replace('"', '\\"') }}')" data-name="{{ cat.name }}">
+            <div class="category-name" style="font-size:16px; font-weight:700; color:var(--primary); margin-bottom:6px; display:flex; align-items:center; gap:8px;">
+              <span>📁</span> {{ cat.name }}
+            </div>
+            <div class="category-count" style="font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:8px;">{{ cat.count }} bookmark{{ 's' if cat.count != 1 }}</div>
+            <div class="category-summary" style="font-size:13px; color:#4b5563; line-height:1.5;">{{ cat.summary }}</div>
+          </div>
+          {% endfor %}
         </div>
-        {% endfor %}
       </div>
-    </div>
-    {% endif %}
-
-    {% if analysis.timeline %}
-    <div class="analysis-section">
-      <h3>Research Timeline</h3>
-      {% for phase in analysis.timeline %}
-      <div class="timeline-item">
-        <span class="timeline-period">{{ phase.period }}</span>
-        <span class="timeline-theme">{{ phase.theme }}</span>
-        <span class="timeline-count">{{ phase.count | default('?') }} bookmarks</span>
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    {% if analysis.gems %}
-    <div class="analysis-section">
-      <h3>Hidden Gems</h3>
-      {% for gem in analysis.gems %}
-      <div class="gem-item">
-        <div class="gem-title">{{ gem.title }}</div>
-        <div class="gem-reason">{{ gem.reason }}</div>
-        {% if bookmarks and gem.id and gem.id <= bookmarks|length %}
-        <div class="gem-ref"><a href="{{ bookmarks[gem.id - 1].url }}" target="_blank">View tweet #{{ gem.id }}</a></div>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    {% if analysis.stale %}
-    <div class="analysis-section">
-      <h3>Probably Stale</h3>
-      {% for item in analysis.stale %}
-      <div class="stale-item">
-        <div class="stale-title">{{ item.title }}</div>
-        <div class="stale-reason">{{ item.reason }}</div>
-        {% if bookmarks and item.id and item.id <= bookmarks|length %}
-        <div class="stale-ref"><a href="{{ bookmarks[item.id - 1].url }}" target="_blank">View tweet #{{ item.id }} &rarr;</a></div>
-        {% endif %}
-      </div>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    {% if analysis.actions %}
-    <div class="analysis-section">
-      <h3>Recommended Actions</h3>
-      {% for action in analysis.actions %}
-      <div class="action-item">
-        {% if action is mapping %}
-        <div class="action-text">{{ action.text }}</div>
-        {% if action.bookmark_ids and bookmarks %}
-        <div class="action-refs">
-          {% for bid in action.bookmark_ids %}{% if bid <= bookmarks|length %}
-          <a href="{{ bookmarks[bid - 1].url }}" target="_blank" class="action-ref">Bookmark #{{ bid }}</a>
-          {% endif %}{% endfor %}
+      {% endif %}
+      
+      <!-- Timeline and recommendations -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px;">
+        {% if analysis.timeline %}
+        <div class="analysis-section" style="margin-bottom:0;">
+          <h3>Research Timeline</h3>
+          {% for phase in analysis.timeline %}
+          <div class="timeline-item">
+            <span class="timeline-period">{{ phase.period }}</span>
+            <span class="timeline-theme">{{ phase.theme }}</span>
+            <span class="timeline-count">{{ phase.count | default('?') }} bookmarks</span>
+          </div>
+          {% endfor %}
         </div>
         {% endif %}
-        {% else %}<div class="action-text">{{ action }}</div>{% endif %}
+
+        {% if analysis.actions %}
+        <div class="analysis-section" style="margin-bottom:0;">
+          <h3>Recommended Actions</h3>
+          {% for action in analysis.actions %}
+          <div class="action-item">
+            {% if action is mapping %}
+            <div class="action-text">{{ action.text }}</div>
+            {% if action.bookmark_ids and bookmarks %}
+            <div class="action-refs">
+              {% for bid in action.bookmark_ids %}{% if bid <= bookmarks|length %}
+              <a href="{{ bookmarks[bid - 1].url }}" target="_blank" class="action-ref">Bookmark #{{ bid }}</a>
+              {% endif %}{% endfor %}
+            </div>
+            {% endif %}
+            {% else %}<div class="action-text">{{ action }}</div>{% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
       </div>
-      {% endfor %}
+      
+      <!-- Gems & Stale -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px;">
+        {% if analysis.gems %}
+        <div class="analysis-section" style="margin-bottom:0;">
+          <h3>Hidden Gems</h3>
+          {% for gem in analysis.gems %}
+          <div class="gem-item">
+            <div class="gem-title" style="font-weight:600;">{{ gem.title }}</div>
+            <div class="gem-reason" style="font-size:12px; color:var(--text-muted); margin-top:2px;">{{ gem.reason }}</div>
+            {% if bookmarks and gem.id and gem.id <= bookmarks|length %}
+            <div class="gem-ref" style="margin-top:4px;"><a href="{{ bookmarks[gem.id - 1].url }}" target="_blank" style="color:var(--primary); font-size:11px; text-decoration:none;">View tweet #{{ gem.id }} &rarr;</a></div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if analysis.stale %}
+        <div class="analysis-section" style="margin-bottom:0;">
+          <h3>Probably Stale</h3>
+          {% for item in analysis.stale %}
+          <div class="stale-item">
+            <div class="stale-title" style="font-weight:600;">{{ item.title }}</div>
+            <div class="stale-reason" style="font-size:12px; color:var(--text-muted); margin-top:2px;">{{ item.reason }}</div>
+            {% if bookmarks and item.id and item.id <= bookmarks|length %}
+            <div class="stale-ref" style="margin-top:4px;"><a href="{{ bookmarks[item.id - 1].url }}" target="_blank" style="color:var(--primary); font-size:11px; text-decoration:none;">View tweet #{{ item.id }} &rarr;</a></div>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+    {% else %}
+    <div class="card" style="text-align:center; padding:40px;">
+      <div style="font-size:40px; margin-bottom:16px;">🧠</div>
+      <h3>Your Brain is not Analyzed yet</h3>
+      <p style="color:var(--text-muted); font-size:13px; max-width:400px; margin:8px auto 20px;">Run the AI analysis tool to cluster your bookmarks into smart folders, generate cheatsheets, and find gems.</p>
+      {% if not premium_preview and ai_credits > 0 %}
+      <form method="POST" action="/bookmarks/analyze">
+        <button type="submit" class="btn btn-ai" onclick="showLoading()">Analyze with AI</button>
+      </form>
+      {% elif premium_preview %}
+      <button class="btn btn-ai" onclick="openUpgradeModal()">Analyze with AI ⚡</button>
+      {% else %}
+      <button class="btn btn-ai" onclick="openRefillModal()">Analyze with AI ⚡</button>
+      {% endif %}
     </div>
     {% endif %}
   </div>
-  {% endif %}
 
-  {% if bookmarks %}
-  <div class="card" id="bookmarks-card">
-    <div style="display:flex; align-items:center; gap:14px; margin-bottom:12px;">
-      <h2 style="margin-bottom:0;">All Bookmarks</h2>
-      <span class="filter-label" id="filterLabel">
-        Filtered: <strong id="filterName"></strong>
-        <span class="filter-clear" onclick="clearFilter()">&times;</span>
-      </span>
-    </div>
+  <!-- Tab 2: All Bookmarks Table -->
+  <div id="tab-content-table" class="bookmarks-tab-content">
+    <div class="card" id="bookmarks-card">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:16px; flex-wrap:wrap;">
+        <h2 style="margin-bottom:0;">All synched bookmarks</h2>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" id="keywordSearchInput" class="field-input" placeholder="Keyword search..." oninput="filterTableByKeyword(this.value)" style="padding:6px 12px; font-size:12px; width:200px; border-radius:6px; margin-bottom:0;">
+          <span class="filter-label" id="filterLabel">
+            Category: <strong id="filterName"></strong>
+            <span class="filter-clear" onclick="clearFilter()">&times;</span>
+          </span>
+        </div>
+      </div>
 
-    {% if analysis and analysis.categories %}
-    <div class="filter-bar">
-      <span class="filter-pill active" onclick="clearFilter()">All</span>
-      {% for cat in analysis.categories %}
-      <span class="filter-pill" onclick="filterByPill(this, {{ cat.bookmark_ids | tojson }}, '{{ cat.name }}')">{{ cat.name }}</span>
-      {% endfor %}
-    </div>
-    {% endif %}
-
-    <div style="overflow-x:auto;">
-    <table>
-      <thead><tr><th>#</th><th>Tweet</th><th>Author</th><th>Date</th><th style="text-align:right">Likes</th><th style="text-align:right">RTs</th><th>Link</th></tr></thead>
-      <tbody id="bookmarks-tbody">
-        {% for bm in bookmarks %}
-        <tr data-index="{{ loop.index }}">
-          <td style="color:#ccc">{{ loop.index }}</td>
-          <td class="tweet-text">{{ bm.text }}</td>
-          <td class="author">{{ bm.name }}<br><span class="handle">@{{ bm.username }}</span></td>
-          <td class="date">{{ bm.date }}</td>
-          <td class="metric">{{ bm.likes }}</td>
-          <td class="metric">{{ bm.retweets }}</td>
-          <td class="link"><a href="{{ bm.url }}" target="_blank">View</a></td>
-        </tr>
+      {% if analysis and analysis.categories %}
+      <div class="filter-bar" style="margin-bottom:16px;">
+        <span class="filter-pill active" onclick="clearFilter()">All</span>
+        {% for cat in analysis.categories %}
+        <span class="filter-pill" onclick="filterByPill(this, {{ cat.bookmark_ids | tojson }}, '{{ cat.name }}')">{{ cat.name }}</span>
         {% endfor %}
-        {% if premium_preview %}
-        <!-- Blurred placeholder rows -->
-        {% for i in range(1, 6) %}
-        <tr class="blurred-row" onclick="openUpgradeModal()">
-          <td style="color:#ccc">{{ bookmarks|length + i }}</td>
-          <td class="tweet-text blurred-text">This is a premium bookmarked tweet that is locked. Upgrade to unlock full search and AI clustering.</td>
-          <td class="author blurred-text">Locked Name<br><span class="handle">@locked_handle</span></td>
-          <td class="date blurred-text">2026-06-03</td>
-          <td class="metric blurred-text">99</td>
-          <td class="metric blurred-text">45</td>
-          <td class="link"><span class="lock-icon">🔒</span></td>
-        </tr>
-        {% endfor %}
-        {% endif %}
-      </tbody>
-    </table>
+      </div>
+      {% endif %}
+
+      <div style="overflow-x:auto;">
+      <table>
+        <thead><tr><th>#</th><th>Tweet</th><th>Author</th><th>Date</th><th>Actions</th><th>Notes</th><th>Link</th></tr></thead>
+        <tbody id="bookmarks-tbody">
+          {% for bm in bookmarks %}
+          <tr data-index="{{ loop.index }}" id="bm-row-{{ bm.id }}">
+            <td style="color:#ccc">{{ loop.index }}</td>
+            <td class="tweet-text" style="font-size:13px; max-width:380px; white-space:normal; line-height:1.5;">{{ bm.text }}</td>
+            <td class="author" style="font-size:12px;">{{ bm.name }}<br><span class="handle" style="color:var(--text-muted);">@{{ bm.username }}</span></td>
+            <td class="date" style="font-size:11px; color:var(--text-light);">{{ bm.date[:10] }}</td>
+            <td>
+              <div style="display:flex; gap:8px; align-items:center;">
+                <button class="star-icon-btn {% if bm.starred %}active{% endif %}" onclick="toggleRowStar(this, '{{ bm.id }}')">{% if bm.starred %}★{% else %}☆{% endif %}</button>
+                <button class="archive-icon-btn" onclick="archiveRow(this, '{{ bm.id }}')">📥</button>
+              </div>
+            </td>
+            <td>
+              <div id="note-container-{{ bm.id }}">
+                {% if bm.note %}
+                <span class="note-text-display" onclick="openNotePrompt('{{ bm.id }}')">{{ bm.note[:20] }}{% if bm.note|length > 20 %}...{% endif %}</span>
+                {% else %}
+                <button class="note-btn" onclick="openNotePrompt('{{ bm.id }}')">+ Note</button>
+                {% endif %}
+              </div>
+            </td>
+            <td class="link"><a href="{{ bm.url }}" target="_blank" class="gem-view-link">View</a></td>
+          </tr>
+          {% endfor %}
+          {% if premium_preview %}
+          {% for i in range(1, 6) %}
+          <tr class="blurred-row" onclick="openUpgradeModal()">
+            <td style="color:#ccc">{{ bookmarks|length + i }}</td>
+            <td class="tweet-text blurred-text">This is a premium bookmarked tweet that is locked. Upgrade to unlock full search and AI clustering.</td>
+            <td class="author blurred-text">Locked Name<br><span class="handle">@locked_handle</span></td>
+            <td class="date blurred-text">2026-06-03</td>
+            <td class="metric blurred-text">Locked</td>
+            <td class="metric blurred-text">Locked</td>
+            <td class="link"><span class="lock-icon">🔒</span></td>
+          </tr>
+          {% endfor %}
+          {% endif %}
+        </tbody>
+      </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab 3: Ask Assistant Workspace -->
+  <div id="tab-content-qa" class="bookmarks-tab-content">
+    <div class="ask-tab-container">
+      <h2 class="ask-tab-header">⚡ Ask Your AI Bookmark Brain</h2>
+      <p class="ask-tab-sub">Ask natural language questions about all the knowledge, tips, and links saved in your bookmarks.</p>
+      
+      <div style="display:flex; gap:12px; margin-bottom:20px;">
+        <input type="text" id="bookmarksTabSearchInput" class="field-input" placeholder="What are the best frameworks or workflows I saved?..." style="padding:14px; font-size:14px; border-radius:8px; margin-bottom:0; flex:1;" onkeydown="if(event.key === 'Enter') handleTabSearchSubmit()">
+        <button id="bookmarksTabSearchBtn" class="btn btn-primary" onclick="handleTabSearchSubmit()" style="padding:12px 28px; border-radius:8px; font-size:14px; background:var(--primary); color:#fff;">Ask Brain ⚡</button>
+      </div>
+
+      <div class="ai-response-box" id="bookmarksTabAiResponseBox" style="display:none; margin-top:20px;">
+        <div class="ai-response-header">
+          <span style="display:flex; align-items:center; gap:6px;">
+            <span>✨</span>
+            <strong>Synthesis Result</strong>
+          </span>
+          <button class="ai-response-close" onclick="closeTabAiResponse()">&times;</button>
+        </div>
+        <div class="ai-response-body" id="bookmarksTabAiResponseBody">
+          <!-- streamed markdown -->
+        </div>
+      </div>
     </div>
   </div>
   {% endif %}
@@ -309,7 +655,43 @@
 
 </div>
 
+<!-- Split Screen Drawer -->
+<div class="split-drawer" id="splitDrawer" style="display:none;">
+  <div class="drawer-overlay" onclick="closeSplitDrawer()"></div>
+  <div class="drawer-content">
+    <div class="drawer-header">
+      <h2 id="drawerTitle" style="margin:0;">AI Knowledge Vault</h2>
+      <button class="drawer-close-btn" onclick="closeSplitDrawer()">&times;</button>
+    </div>
+    <div class="drawer-body">
+      <!-- Left Panel: Wiki & Links -->
+      <div class="drawer-left">
+        <div class="drawer-tabs">
+          <button class="drawer-tab-btn active" id="btnWikiTab" onclick="switchDrawerSubTab('wiki')">📖 Synthesis Wiki</button>
+          <button class="drawer-tab-btn" id="btnLinksTab" onclick="switchDrawerSubTab('links')">🔗 Resource Hub</button>
+        </div>
+        <div class="drawer-subtab-content active" id="drawerWikiContent" style="padding-top:10px;">
+          <!-- AI Wiki summary text -->
+        </div>
+        <div class="drawer-subtab-content" id="drawerLinksContent" style="padding-top:10px;">
+          <!-- List of URLs extracted from these bookmarks -->
+        </div>
+      </div>
+      <!-- Right Panel: Citation feed -->
+      <div class="drawer-right">
+        <h3 id="drawerRightTitle">Cited Source Tweets</h3>
+        <div class="tweets-feed" id="drawerTweetsFeed">
+          <!-- List of cited tweets here -->
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
+const bookmarksData = {{ bookmarks | tojson }};
+const isPremium = !{{ premium_preview | tojson }};
+
 function openUpgradeModal() {
   document.getElementById('upgradeModal').classList.add('show');
 }
@@ -325,8 +707,293 @@ function closeRefillModal() {
 function showLoading() {
   document.getElementById('loadingOverlay').classList.add('show');
 }
+
+let activeVaultBookmarkIds = [];
+let currentDrawerTab = 'wiki';
+
+function switchBookmarksTab(tabName) {
+  document.querySelectorAll('.bookmarks-tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-nav-btn').forEach(el => el.classList.remove('active'));
+  
+  document.getElementById(`tab-content-${tabName}`).classList.add('active');
+  document.getElementById(`nav-tab-${tabName}`).classList.add('active');
+}
+
+function openCategoryVault(catName, bookmarkIds, catSummary) {
+  activeVaultBookmarkIds = bookmarkIds;
+  document.getElementById('drawerTitle').innerText = '📁 ' + catName;
+  document.getElementById('splitDrawer').style.display = 'flex';
+  
+  const wikiContent = document.getElementById('drawerWikiContent');
+  wikiContent.innerHTML = formatMarkdown(catSummary);
+  
+  renderResourceHub(bookmarkIds);
+  renderCitedTweets(bookmarkIds);
+  switchDrawerSubTab('wiki');
+}
+
+function closeSplitDrawer() {
+  document.getElementById('splitDrawer').style.display = 'none';
+}
+
+function switchDrawerSubTab(subTab) {
+  currentDrawerTab = subTab;
+  document.getElementById('drawerWikiContent').classList.toggle('active', subTab === 'wiki');
+  document.getElementById('drawerLinksContent').classList.toggle('active', subTab === 'links');
+  
+  document.getElementById('btnWikiTab').classList.toggle('active', subTab === 'wiki');
+  document.getElementById('btnLinksTab').classList.toggle('active', subTab === 'links');
+}
+
+function renderCitedTweets(bookmarkIds) {
+  const container = document.getElementById('drawerTweetsFeed');
+  container.innerHTML = '';
+  
+  let count = 0;
+  bookmarksData.forEach((bm, index) => {
+    const loopIndex = index + 1;
+    if (bookmarkIds.includes(loopIndex)) {
+      count++;
+      const card = document.createElement('div');
+      card.className = 'feed-tweet-card';
+      card.innerHTML = `
+        <div class="feed-tweet-header">
+          <span>@${bm.username}</span>
+          <span style="color:var(--text-light);">${bm.date ? bm.date.substring(0,10) : ''}</span>
+        </div>
+        <div class="feed-tweet-text">${bm.text}</div>
+        <div class="feed-tweet-footer">
+          <a href="${bm.url}" target="_blank" class="gem-view-link">Original link &rarr;</a>
+          <span style="color:var(--text-light); font-size:10px;">Bookmark #${loopIndex}</span>
+        </div>
+      `;
+      container.appendChild(card);
+    }
+  });
+  
+  document.getElementById('drawerRightTitle').innerText = `Cited Source Tweets (${count})`;
+}
+
+function renderResourceHub(bookmarkIds) {
+  const container = document.getElementById('drawerLinksContent');
+  container.innerHTML = '';
+  
+  let linkCount = 0;
+  const listDiv = document.createElement('div');
+  listDiv.className = 'links-list';
+  
+  bookmarksData.forEach((bm, index) => {
+    const loopIndex = index + 1;
+    if (bookmarkIds.includes(loopIndex) && bm.urls && bm.urls.length > 0) {
+      bm.urls.forEach(url => {
+        linkCount++;
+        const card = document.createElement('div');
+        card.className = 'resource-link-card';
+        card.innerHTML = `
+          <div style="flex:1; min-width:0; padding-right:12px;">
+            <div class="resource-link-title" title="${url}">${url}</div>
+            <div class="resource-link-meta">Saved by @${bm.username} in Bookmark #${loopIndex}</div>
+          </div>
+          <a href="${url}" target="_blank" class="btn btn-secondary" style="padding:4px 10px; font-size:11px; border-radius:4px; text-decoration:none; flex-shrink:0;">Open</a>
+        `;
+        listDiv.appendChild(card);
+      });
+    }
+  });
+  
+  if (linkCount > 0) {
+    container.appendChild(listDiv);
+  } else {
+    container.innerHTML = '<div style="text-align:center; padding:30px 0; color:var(--text-muted); font-size:13px;">No external links or tools found in this vault folder.</div>';
+  }
+}
+
+function toggleRowStar(btn, bookmarkId) {
+  const isStarred = btn.classList.contains('active');
+  btn.disabled = true;
+  fetch('/api/bookmarks/meta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookmark_id: bookmarkId, starred: !isStarred })
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    if (data.status === 'success') {
+      if (isStarred) {
+        btn.classList.remove('active');
+        btn.innerHTML = '☆';
+      } else {
+        btn.classList.add('active');
+        btn.innerHTML = '★';
+      }
+      const found = bookmarksData.find(b => String(b.id) === String(bookmarkId));
+      if (found) found.starred = !isStarred;
+    } else {
+      alert('Failed to update bookmark: ' + data.message);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    console.error(err);
+  });
+}
+
+function archiveRow(btn, bookmarkId) {
+  if (!confirm('Are you sure you want to archive this bookmark? It will be hidden from folders and tables.')) {
+    return;
+  }
+  btn.disabled = true;
+  fetch('/api/bookmarks/meta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookmark_id: bookmarkId, archived: true })
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    if (data.status === 'success') {
+      const row = document.getElementById(`bm-row-${bookmarkId}`);
+      if (row) {
+        row.style.opacity = '0.3';
+        setTimeout(() => { row.remove(); }, 300);
+      }
+      const idx = bookmarksData.findIndex(b => String(b.id) === String(bookmarkId));
+      if (idx !== -1) bookmarksData.splice(idx, 1);
+    } else {
+      alert('Failed to archive bookmark: ' + data.message);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    console.error(err);
+  });
+}
+
+function openNotePrompt(bookmarkId) {
+  const found = bookmarksData.find(b => String(b.id) === String(bookmarkId));
+  const oldNote = found ? (found.note || "") : "";
+  const newNote = prompt("Enter a personal note for this bookmark (indexed by AI search):", oldNote);
+  if (newNote === null) return;
+  
+  fetch('/api/bookmarks/meta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookmark_id: bookmarkId, note: newNote.trim() })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      if (found) found.note = newNote.trim();
+      const container = document.getElementById(`note-container-${bookmarkId}`);
+      if (newNote.trim()) {
+        const truncated = newNote.trim().substring(0, 20) + (newNote.trim().length > 20 ? '...' : '');
+        container.innerHTML = `<span class="note-text-display" onclick="openNotePrompt('${bookmarkId}')">${truncated}</span>`;
+      } else {
+        container.innerHTML = `<button class="note-btn" onclick="openNotePrompt('${bookmarkId}')">+ Note</button>`;
+      }
+    } else {
+      alert('Failed to save note: ' + data.message);
+    }
+  })
+  .catch(err => {
+    console.error(err);
+  });
+}
+
+function filterTableByKeyword(q) {
+  q = q.toLowerCase().trim();
+  document.querySelectorAll('#bookmarks-tbody tr').forEach(row => {
+    if (row.classList.contains('blurred-row')) return;
+    const text = row.querySelector('.tweet-text').innerText.toLowerCase();
+    const author = row.querySelector('.author').innerText.toLowerCase();
+    const matches = text.includes(q) || author.includes(q);
+    row.style.display = matches ? '' : 'none';
+  });
+}
+
+function handleTabSearchSubmit() {
+  const query = document.getElementById('bookmarksTabSearchInput').value.trim();
+  if (!query) return;
+
+  const responseBox = document.getElementById('bookmarksTabAiResponseBox');
+  const responseBody = document.getElementById('bookmarksTabAiResponseBody');
+  
+  responseBox.style.display = 'block';
+  responseBody.innerHTML = '<div style="display:flex; align-items:center; gap:8px; color:var(--text-muted);"><div class="loading-spinner" style="width:16px; height:16px; border-width:2px; border-top-color:var(--primary); margin:0;"></div>Searching and synthesizing your brain...</div>';
+  
+  responseBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+  fetch('/api/ai/ask', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query: query })
+  })
+  .then(res => {
+    if (res.status === 402) {
+      return res.json().then(data => {
+        throw new Error('PAYWALL:' + data.message);
+      });
+    }
+    return res.json();
+  })
+  .then(data => {
+    if (data.status === 'success') {
+      responseBody.innerHTML = formatMarkdown(data.answer);
+    } else {
+      responseBody.innerHTML = `<p style="color:var(--danger-text);">Error: ${data.message}</p>`;
+    }
+  })
+  .catch(err => {
+    if (err.message.startsWith('PAYWALL:')) {
+      const msg = err.message.substring(8);
+      responseBody.innerHTML = `
+        <div style="text-align:center; padding:12px;">
+          <p style="color:var(--danger-text); font-weight:600; margin-bottom:8px;">🔒 AI Q&A Limit Reached</p>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">${msg}</p>
+          <a href="/checkout?type=upgrade" class="btn btn-ai" style="font-size:12px; text-decoration:none; display:inline-block;">Upgrade to Premium ($9.00 Lifetime)</a>
+        </div>
+      `;
+    } else {
+      responseBody.innerHTML = `<p style="color:var(--danger-text);">Failed to query AI Bookmark Brain: ${err.message || err}</p>`;
+    }
+  });
+}
+
+function closeTabAiResponse() {
+  document.getElementById('bookmarksTabAiResponseBox').style.display = 'none';
+}
+
+function formatMarkdown(text) {
+  if (!text) return "";
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  
+  html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.+<\/li>)/s, '<ul>$1</ul>');
+  
+  html = html.replace(/^\s*###\s+(.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^\s*##\s+(.+)$/gm, '<h2>$1</h2>');
+  
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  html = html.split(/\n\n+/).map(p => {
+    p = p.trim();
+    if (!p) return "";
+    if (p.startsWith('<ul>') || p.startsWith('<h3>') || p.startsWith('<h2>')) return p;
+    return `<p>${p}</p>`;
+  }).join('\n');
+
+  html = html.replace(/\[@(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:var(--primary); font-weight:600; text-decoration:underline;">@$1</a>');
+
+  return html;
+}
+
 function applyFilter(ids, name) {
   document.querySelectorAll('#bookmarks-tbody tr').forEach(row => {
+    if (row.classList.contains('blurred-row')) return;
     const idx = parseInt(row.dataset.index);
     row.classList.toggle('highlight', ids.includes(idx));
     row.classList.toggle('dimmed', !ids.includes(idx));
@@ -334,6 +1001,7 @@ function applyFilter(ids, name) {
   document.getElementById('filterName').textContent = name;
   document.getElementById('filterLabel').classList.add('active');
 }
+
 function filterByCategory(card, ids, name) {
   if (card.classList.contains('selected')) { clearFilter(); return; }
   document.querySelectorAll('.category-card').forEach(c => c.classList.remove('selected'));
@@ -342,18 +1010,21 @@ function filterByCategory(card, ids, name) {
   applyFilter(ids, name);
   document.getElementById('bookmarks-card').scrollIntoView({ behavior: 'smooth' });
 }
+
 function filterByPill(pill, ids, name) {
   document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
   pill.classList.add('active');
   document.querySelectorAll('.category-card').forEach(c => c.classList.toggle('selected', c.dataset.name === name));
   applyFilter(ids, name);
 }
+
 function syncPills(name) {
   document.querySelectorAll('.filter-pill').forEach(p => {
     p.classList.remove('active');
     if (p.textContent.trim() === name) p.classList.add('active');
   });
 }
+
 function clearFilter() {
   document.querySelectorAll('.category-card').forEach(c => c.classList.remove('selected'));
   document.querySelectorAll('#bookmarks-tbody tr').forEach(r => r.classList.remove('highlight', 'dimmed'));
@@ -362,6 +1033,16 @@ function clearFilter() {
   pills.forEach(p => p.classList.remove('active'));
   if (pills.length) pills[0].classList.add('active');
 }
+
+window.addEventListener('DOMContentLoaded', () => {
+  const urlParams = new URLSearchParams(window.location.search);
+  const q = urlParams.get('q');
+  if (q) {
+    switchBookmarksTab('qa');
+    document.getElementById('bookmarksTabSearchInput').value = q;
+    handleTabSearchSubmit();
+  }
+});
 </script>
 </body>
 </html>

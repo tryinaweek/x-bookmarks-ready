@@ -5,6 +5,259 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dashboard - MyBookmarks</title>
   <link rel="stylesheet" href="/static/css/style.css">
+  <style>
+    /* Ask AI Widget & Toggle Styles */
+    .search-container {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: var(--shadow);
+    }
+    .search-form {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+    .search-input-wrapper {
+      position: relative;
+      flex: 1;
+    }
+    .search-input {
+      width: 100%;
+      padding: 14px 16px 14px 44px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-family: inherit;
+      font-size: 14px;
+      outline: none;
+      background: var(--bg);
+      transition: all 0.2s ease;
+    }
+    .search-input:focus {
+      border-color: var(--primary);
+      background: #fff;
+      box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.1);
+    }
+    .search-icon-svg {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 18px;
+      height: 18px;
+      color: var(--text-muted);
+      pointer-events: none;
+    }
+    .search-toggle-container {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+    .search-mode-label {
+      user-select: none;
+      font-weight: 500;
+      transition: color 0.2s;
+    }
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 38px;
+      height: 22px;
+    }
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: .4s;
+    }
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+    }
+    input:checked + .slider {
+      background-color: var(--primary);
+    }
+    input:checked + .slider:before {
+      transform: translateX(16px);
+    }
+    .slider.round {
+      border-radius: 34px;
+    }
+    .slider.round:before {
+      border-radius: 50%;
+    }
+
+    /* AI Response Box */
+    .ai-response-box {
+      background: #fff;
+      border: 1px solid var(--primary-light);
+      border-left: 4px solid var(--primary);
+      border-radius: var(--radius-sm);
+      padding: 20px;
+      margin-top: 16px;
+      box-shadow: var(--shadow-sm);
+      animation: slideDown 0.3s ease;
+    }
+    .ai-response-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      border-bottom: 1px solid var(--border-light);
+      padding-bottom: 8px;
+    }
+    .ai-spark-icon {
+      margin-right: 6px;
+    }
+    .ai-response-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+    .ai-response-close:hover {
+      color: var(--danger);
+    }
+    .ai-response-body {
+      font-size: 14px;
+      line-height: 1.6;
+      color: #374151;
+    }
+    .ai-response-body h1, .ai-response-body h2, .ai-response-body h3 {
+      color: var(--text);
+      margin-top: 16px;
+      margin-bottom: 8px;
+      font-weight: 700;
+    }
+    .ai-response-body h2 { font-size: 16px; }
+    .ai-response-body h3 { font-size: 14px; }
+    .ai-response-body p { margin-bottom: 12px; }
+    .ai-response-body ul, .ai-response-body ol { margin-left: 20px; margin-bottom: 12px; }
+    .ai-response-body li { margin-bottom: 4px; }
+    .ai-response-body a { color: var(--primary); text-decoration: none; font-weight: 500; }
+    .ai-response-body a:hover { text-decoration: underline; }
+    .ai-response-body blockquote {
+      border-left: 4px solid #d1d5db;
+      padding-left: 12px;
+      color: var(--text-muted);
+      margin: 12px 0;
+    }
+
+    /* Daily Spark */
+    .daily-gems-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .daily-gem-card {
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 16px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .daily-gem-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+    }
+    .gem-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .gem-author {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+    .gem-actions {
+      display: flex;
+      gap: 6px;
+    }
+    .gem-star-btn, .gem-archive-btn {
+      background: none;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      color: var(--text-light);
+      transition: color 0.15s ease, transform 0.1s ease;
+    }
+    .gem-star-btn:hover { color: #f59e0b; transform: scale(1.1); }
+    .gem-star-btn.active { color: #f59e0b; }
+    .gem-archive-btn:hover { color: var(--danger); transform: scale(1.1); }
+
+    .gem-text {
+      font-size: 13px;
+      color: var(--text);
+      line-height: 1.5;
+      margin-bottom: 14px;
+      flex-grow: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: -webkit-box;
+      -webkit-line-clamp: 4;
+      -webkit-box-orient: vertical;
+    }
+    .gem-takeaway-box {
+      background: var(--primary-light);
+      border-left: 3px solid var(--primary);
+      padding: 8px 10px;
+      border-radius: 0 6px 6px 0;
+      font-size: 12px;
+      color: var(--primary-hover);
+      line-height: 1.4;
+      margin-bottom: 12px;
+    }
+    .gem-card-footer {
+      font-size: 11px;
+      border-top: 1px solid var(--border-light);
+      padding-top: 8px;
+      display: flex;
+      justify-content: space-between;
+    }
+    .gem-view-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .gem-view-link:hover {
+      text-decoration: underline;
+    }
+
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
   <!-- Firebase SDK loaded locally to avoid CDN blocks/adblockers -->
   <script src="/static/js/firebase-app-compat.js"></script>
   <script src="/static/js/firebase-auth-compat.js"></script>
@@ -41,25 +294,6 @@
   <a href="/bookmarks" class="sidebar-link">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
     Bookmarks
-  </a>
-  <a href="/tweets" class="sidebar-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-    Tweets
-  </a>
-
-  <div class="sidebar-section">Create</div>
-  <a href="/compose" class="sidebar-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-    Compose
-  </a>
-
-  <a href="/calendar" class="sidebar-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-    Calendar
-  </a>
-  <a href="/drafts" class="sidebar-link">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
-    Drafts
   </a>
 
   {% if is_admin %}
@@ -140,137 +374,139 @@
   {% if twitter_connected or bookmarks_count > 0 %}
 
   <!-- Stat Cards -->
-  <div class="stat-grid">
-    <a href="/bookmarks" class="stat-card">
-      <div class="stat-top">
-        <div class="stat-icon stat-icon-bm">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+  <div class="stat-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); margin-bottom: 24px;">
+    <!-- Bookmarks Stats Card -->
+    <div class="stat-card" style="display:flex; flex-direction:column; justify-content:space-between; cursor:default;">
+      <div>
+        <div class="stat-top">
+          <div class="stat-icon stat-icon-bm">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg>
+          </div>
+          {% if bookmarks_fetched %}
+          <span class="stat-badge stat-badge-ok">Synced {{ bookmarks_fetched[:10] }}</span>
+          {% else %}
+          <span class="stat-badge" style="background:#f3f4f6; color:#4b5563;">Not Synced</span>
+          {% endif %}
         </div>
-        {% if bm_analysis %}<span class="stat-badge stat-badge-ok">Analyzed</span>{% endif %}
+        <div class="stat-value">{{ bookmarks_count }}</div>
+        <div class="stat-label">Total Synced Bookmarks</div>
       </div>
-      <div class="stat-value">{{ bookmarks_count }}</div>
-      <div class="stat-label">Bookmarks</div>
-      <div class="stat-footer">
-        <span class="stat-meta">{% if bookmarks_fetched %}Synced {{ bookmarks_fetched[:10] }}{% else %}Not synced{% endif %}</span>
-        <span class="stat-link">{% if bm_analysis %}View{% elif bookmarks_count > 0 %}Analyze{% else %}Load{% endif %} &rarr;</span>
-      </div>
-    </a>
-    <a href="/tweets" class="stat-card">
-      <div class="stat-top">
-        <div class="stat-icon stat-icon-tw">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-        </div>
-        {% if tw_analysis %}<span class="stat-badge stat-badge-ok">Analyzed</span>{% endif %}
-      </div>
-      <div class="stat-value">{{ tweets_count }}</div>
-      <div class="stat-label">Tweets</div>
-      <div class="stat-footer">
-        <span class="stat-meta">{% if tweets_fetched %}Synced {{ tweets_fetched[:10] }}{% else %}Not synced{% endif %}</span>
-        <span class="stat-link">{% if tw_analysis %}View{% elif tweets_count > 0 %}Analyze{% else %}Load{% endif %} &rarr;</span>
-      </div>
-    </a>
-    <a href="/drafts" class="stat-card">
-      <div class="stat-top">
-        <div class="stat-icon stat-icon-dr">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+      
+      <div class="sync-bar" id="syncBar" style="background:transparent; border:none; padding:0; margin-top:20px; box-shadow:none;">
+        <button class="btn btn-secondary" onclick="showConfirm()" id="syncBtn" style="padding: 6px 14px; font-size:12px;">Sync new bookmarks</button>
+        <div class="sync-confirm" id="syncConfirm" style="margin-top: 10px;">
+          <span style="font-size:11px; margin-right:6px;">Uses X API rate limits.</span>
+          <form method="POST" action="/sync" style="display:inline">
+            <button type="submit" class="btn btn-blue" onclick="showLoading()" style="padding: 4px 10px; font-size:11px;">Yes, sync</button>
+          </form>
+          <button class="btn btn-secondary" onclick="hideConfirm()" style="padding: 4px 10px; font-size:11px;">Cancel</button>
         </div>
       </div>
-      <div class="stat-value">{{ drafts|length }}</div>
-      <div class="stat-label">Saved Drafts</div>
-      <div class="stat-footer">
-        <span class="stat-meta">&nbsp;</span>
-        <span class="stat-link">View all &rarr;</span>
+    </div>
+
+    <!-- AI Brain Stats Card -->
+    <a href="/bookmarks" class="stat-card" style="display:flex; flex-direction:column; justify-content:space-between; text-decoration:none;">
+      <div>
+        <div class="stat-top">
+          <div class="stat-icon" style="background:#f5f3ff; color:#7c3aed; display:flex; align-items:center; justify-content:center;">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px; height:18px;"><path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 1 13 16h9m-10-8v8m-4-5h8"/></svg>
+          </div>
+          {% if bm_analysis %}
+          <span class="stat-badge stat-badge-ok">Brain Clustered</span>
+          {% else %}
+          <span class="stat-badge" style="background:#fff7ed; color:#c2410c;">Analysis Required</span>
+          {% endif %}
+        </div>
+        <div class="stat-value">
+          {% if bm_analysis and bm_analysis.categories %}
+            {{ bm_analysis.categories|length }} Categories
+          {% else %}
+             Not Analyzed
+          {% endif %}
+        </div>
+        <div class="stat-label">AI Knowledge Vaults</div>
+      </div>
+      <div class="stat-footer" style="margin-top:20px; border-top:1px solid var(--border-light); padding-top:10px;">
+        <span class="stat-meta">
+          {% if bm_analysis %}
+            {{ bm_analysis.summary[:45] }}...
+          {% else %}
+            Run AI analysis to cluster your brain
+          {% endif %}
+        </span>
+        <span class="stat-link">View Vaults &rarr;</span>
       </div>
     </a>
   </div>
 
-  <!-- Sync Bar -->
-  <div class="sync-bar" id="syncBar">
-    <div class="sync-info">
-      {% if bookmarks_fetched or tweets_fetched %}
-        <strong>Last synced</strong> {{ (bookmarks_fetched or tweets_fetched)[:10] }} &middot; Delta sync only
-      {% else %}
-        <strong>No data yet</strong> &middot; First sync loads all bookmarks and tweets
-      {% endif %}
+  <!-- Ask Your Bookmarks AI Widget -->
+  <div class="search-container">
+    <h2 style="margin-top:0; margin-bottom:14px; font-size:16px; font-weight:700; color:var(--text); display:flex; align-items:center; gap:8px;">
+      <span>🔍</span> Ask Your Bookmark Brain
+    </h2>
+    <div class="search-form">
+      <div class="search-input-wrapper">
+        <svg class="search-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="dashboardSearchInput" class="search-input" placeholder="Ask your bookmarks anything... (e.g. What are some startup playbooks?)" onkeydown="if(event.key === 'Enter') handleSearchSubmit()">
+      </div>
+      <button id="searchSubmitBtn" class="btn btn-primary" onclick="handleSearchSubmit()" style="padding:12px 24px; border-radius:var(--radius-sm); font-size:14px; background:var(--primary); color:#fff; display:flex; align-items:center; gap:6px;">
+        <span>Ask AI</span> ⚡
+      </button>
     </div>
-    <div>
-      <button class="btn btn-secondary" onclick="showConfirm()" id="syncBtn">Sync new data</button>
-      <div class="sync-confirm" id="syncConfirm">
-        <span>Uses X API credits.</span>
-        <form method="POST" action="/sync" style="display:inline">
-          <button type="submit" class="btn btn-blue" onclick="showLoading()">Yes, sync</button>
-        </form>
-        <button class="btn btn-secondary" onclick="hideConfirm()">Cancel</button>
+    <div class="search-toggle-container">
+      <span class="search-mode-label" id="searchModeLabel" style="color:var(--text-muted);">Keyword Search</span>
+      <label class="switch">
+        <input type="checkbox" id="aiToggle" checked onchange="toggleDashboardSearchMode(this)">
+        <span class="slider round"></span>
+      </label>
+      <span class="search-mode-label" id="aiModeLabel" style="font-weight:600; color:var(--primary);">Ask AI (2 runs free)</span>
+    </div>
+
+    <!-- Q&A Answer Container -->
+    <div class="ai-response-box" id="dashboardAiResponseBox" style="display:none;">
+      <div class="ai-response-header">
+        <span style="display:flex; align-items:center; gap:6px;">
+          <span class="ai-spark-icon">✨</span>
+          <strong>AI Synthesis</strong>
+        </span>
+        <button class="ai-response-close" onclick="closeDashboardAiResponse()">&times;</button>
+      </div>
+      <div class="ai-response-body" id="dashboardAiResponseBody">
+        <!-- streamed/loaded markdown here -->
       </div>
     </div>
   </div>
 
-  <!-- Quick Compose -->
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Quick Compose</span>
-      <a href="/compose" class="btn btn-secondary">Full editor</a>
+  <!-- The Daily Spark spaced repetition card -->
+  {% if daily_gems %}
+  <div class="card" style="margin-bottom:24px;">
+    <div class="card-header" style="padding-bottom:6px;">
+      <div>
+        <span class="card-title" style="display:flex; align-items:center; gap:6px;">⚡ The Daily Spark</span>
+        <p style="font-size:12px; color:var(--text-muted); margin-top:2px;">3 random older saves to rediscover. Re-learn from them today!</p>
+      </div>
     </div>
-    <form method="POST" action="/compose/generate" style="display:flex; gap:10px; align-items:flex-start;">
-      <input type="hidden" name="platform" value="x">
-      <input type="hidden" name="format" value="tweet">
-      <textarea name="idea" placeholder="What's on your mind?" rows="2" style="flex:1; border:1px solid #eee; border-radius:8px; padding:10px 12px; font-size:13px; font-family:inherit; outline:none; resize:none; line-height:1.5;" onfocus="this.style.borderColor='#7c3aed'" onblur="this.style.borderColor='#eee'"></textarea>
-      <button type="submit" class="btn btn-ai" onclick="this.textContent='...'; this.style.opacity='0.6';">Generate</button>
-    </form>
-  </div>
-
-  <!-- Content Ideas -->
-  {% if suggestions %}
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Content Ideas</span>
-      <a href="/compose" class="btn btn-secondary">View all</a>
-    </div>
-    <div class="suggestion-grid">
-      {% for s in suggestions[:4] %}
-      <div class="suggestion-card">
-        <div class="suggestion-topic">{{ s.topic }}</div>
-        <div class="suggestion-hook">"{{ s.hook }}"</div>
-        <div class="suggestion-meta">
-          <span class="badge {% if s.format == 'thread' %}badge-thread{% else %}badge-tweet{% endif %}">{{ s.format }}</span>
-          <a href="/compose?idea={{ s.hook | urlencode }}&format={{ s.format }}" class="btn btn-ai" style="padding:4px 10px; font-size:11px;">Compose</a>
+    <div class="daily-gems-grid">
+      {% for gem in daily_gems %}
+      <div class="daily-gem-card" id="gem-card-{{ gem.id }}">
+        <div class="gem-card-header">
+          <span class="gem-author">@{{ gem.username }}</span>
+          <div class="gem-actions">
+            <button class="gem-star-btn {% if gem.starred %}active{% endif %}" onclick="toggleGemStar(this, '{{ gem.id }}')" title="Star gem">{% if gem.starred %}★{% else %}☆{% endif %}</button>
+            <button class="gem-archive-btn" onclick="archiveGem(this, '{{ gem.id }}')" title="Archive gem">📥</button>
+          </div>
+        </div>
+        <div class="gem-text">"{{ gem.text }}"</div>
+        <div class="gem-takeaway-box">
+          <strong>AI Takeaway:</strong> <span>{{ gem.takeaway }}</span>
+        </div>
+        <div class="gem-card-footer">
+          <a href="{{ gem.url }}" target="_blank" class="gem-view-link">View tweet &rarr;</a>
+          <span style="color:var(--text-light); font-size:10px;">{{ gem.date[:10] }}</span>
         </div>
       </div>
       {% endfor %}
     </div>
-  </div>
-  {% elif bm_analysis or tw_analysis %}
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Content Ideas</span>
-    </div>
-    <p class="empty-note">Generate ideas from your bookmark interests and tweet patterns.</p>
-    <form method="POST" action="/compose/suggestions" style="margin-top:10px;">
-      <button type="submit" class="btn btn-ai" onclick="this.textContent='Generating...'; this.style.opacity='0.6';">Get content ideas</button>
-    </form>
-  </div>
-  {% endif %}
-
-  {% if drafts %}
-  <div class="card">
-    <div class="card-header">
-      <span class="card-title">Recent Drafts</span>
-      <a href="/drafts" class="btn btn-secondary">View all</a>
-    </div>
-    {% for draft in drafts[:3] %}
-    <div class="draft-item">
-      <div class="draft-meta">{{ draft.topic or 'Untitled' }} &middot; {{ draft.format }} &middot; {{ draft.created_at[:10] if draft.created_at else '' }}</div>
-      <div class="draft-text">{{ draft.tweets[0][:100] if draft.tweets else '' }}{% if draft.tweets and draft.tweets[0]|length > 100 %}...{% endif %}</div>
-      <div class="draft-actions">
-        <form method="POST" action="/compose/post" style="display:inline">
-          <input type="hidden" name="tweets" value="{{ draft.tweets | tojson }}">
-          <input type="hidden" name="draft_id" value="{{ draft.id }}">
-          <button type="submit" class="btn btn-blue">Post</button>
-        </form>
-        <a href="/drafts" class="btn btn-secondary">Edit</a>
-      </div>
-    </div>
-    {% endfor %}
   </div>
   {% endif %}
   
@@ -341,6 +577,171 @@ firebase.auth().onAuthStateChanged((user) => {
     });
   }
 });
+
+function toggleDashboardSearchMode(checkbox) {
+  const submitBtn = document.getElementById('searchSubmitBtn');
+  const input = document.getElementById('dashboardSearchInput');
+  const aiLabel = document.getElementById('aiModeLabel');
+  const kwLabel = document.getElementById('searchModeLabel');
+  if (checkbox.checked) {
+    submitBtn.innerHTML = '<span>Ask AI</span> ⚡';
+    input.placeholder = 'Ask your bookmarks anything... (e.g. What are some startup playbooks?)';
+    aiLabel.style.fontWeight = '600';
+    aiLabel.style.color = 'var(--primary)';
+    kwLabel.style.fontWeight = '500';
+    kwLabel.style.color = 'var(--text-muted)';
+  } else {
+    submitBtn.innerHTML = 'Search';
+    input.placeholder = 'Search bookmarks by keyword...';
+    kwLabel.style.fontWeight = '600';
+    kwLabel.style.color = 'var(--text)';
+    aiLabel.style.fontWeight = '500';
+    aiLabel.style.color = 'var(--text-muted)';
+  }
+}
+
+function handleSearchSubmit() {
+  const query = document.getElementById('dashboardSearchInput').value.trim();
+  const isAi = document.getElementById('aiToggle').checked;
+  if (!query) return;
+
+  if (isAi) {
+    const responseBox = document.getElementById('dashboardAiResponseBox');
+    const responseBody = document.getElementById('dashboardAiResponseBody');
+    
+    responseBox.style.display = 'block';
+    responseBody.innerHTML = '<div style="display:flex; align-items:center; gap:8px; color:var(--text-muted);"><div class="loading-spinner" style="width:16px; height:16px; border-width:2px; border-top-color:var(--primary); margin:0;"></div>Thinking...</div>';
+    
+    responseBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+
+    fetch('/api/ai/ask', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: query })
+    })
+    .then(res => {
+      if (res.status === 402) {
+        return res.json().then(data => {
+          throw new Error('PAYWALL:' + data.message);
+        });
+      }
+      return res.json();
+    })
+    .then(data => {
+      if (data.status === 'success') {
+        responseBody.innerHTML = formatMarkdown(data.answer);
+      } else {
+        responseBody.innerHTML = `<p style="color:var(--danger-text);">Error: ${data.message}</p>`;
+      }
+    })
+    .catch(err => {
+      if (err.message.startsWith('PAYWALL:')) {
+        const msg = err.message.substring(8);
+        responseBody.innerHTML = `
+          <div style="text-align:center; padding:12px;">
+            <p style="color:var(--danger-text); font-weight:600; margin-bottom:8px;">🔒 AI Q&A Limit Reached</p>
+            <p style="font-size:13px; color:var(--text-muted); margin-bottom:12px;">${msg}</p>
+            <a href="/checkout?type=upgrade" class="btn btn-ai" style="font-size:12px; text-decoration:none; display:inline-block;">Upgrade to Premium ($9.00 Lifetime)</a>
+          </div>
+        `;
+      } else {
+        responseBody.innerHTML = `<p style="color:var(--danger-text);">Failed to query AI Bookmark Brain: ${err.message || err}</p>`;
+      }
+    });
+  } else {
+    window.location.href = `/bookmarks?q=${encodeURIComponent(query)}`;
+  }
+}
+
+function closeDashboardAiResponse() {
+  document.getElementById('dashboardAiResponseBox').style.display = 'none';
+}
+
+function formatMarkdown(text) {
+  if (!text) return "";
+  let html = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+  
+  html = html.replace(/^\s*[\-\*]\s+(.+)$/gm, '<li>$1</li>');
+  html = html.replace(/(<li>.+<\/li>)/s, '<ul>$1</ul>');
+  
+  html = html.replace(/^\s*###\s+(.+)$/gm, '<h3>$1</h3>');
+  html = html.replace(/^\s*##\s+(.+)$/gm, '<h2>$1</h2>');
+  
+  html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  html = html.split(/\n\n+/).map(p => {
+    p = p.trim();
+    if (!p) return "";
+    if (p.startsWith('<ul>') || p.startsWith('<h3>') || p.startsWith('<h2>')) return p;
+    return `<p>${p}</p>`;
+  }).join('\n');
+
+  html = html.replace(/\[@(.*?)\]\((.*?)\)/g, '<a href="$2" target="_blank" style="color:var(--primary); font-weight:600; text-decoration:underline;">@$1</a>');
+
+  return html;
+}
+
+function toggleGemStar(btn, gemId) {
+  const isStarred = btn.classList.contains('active');
+  btn.disabled = true;
+  fetch('/api/bookmarks/meta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookmark_id: gemId, starred: !isStarred })
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    if (data.status === 'success') {
+      if (isStarred) {
+        btn.classList.remove('active');
+        btn.innerHTML = '☆';
+      } else {
+        btn.classList.add('active');
+        btn.innerHTML = '★';
+      }
+    } else {
+      alert('Failed to update bookmark: ' + data.message);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    console.error(err);
+  });
+}
+
+function archiveGem(btn, gemId) {
+  if (!confirm('Are you sure you want to archive this bookmark? It will be hidden from your active dashboard and categories.')) {
+    return;
+  }
+  btn.disabled = true;
+  fetch('/api/bookmarks/meta', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ bookmark_id: gemId, archived: true })
+  })
+  .then(res => res.json())
+  .then(data => {
+    btn.disabled = false;
+    if (data.status === 'success') {
+      const card = document.getElementById(`gem-card-${gemId}`);
+      if (card) {
+        card.style.opacity = '0.3';
+        card.style.transform = 'scale(0.95)';
+        setTimeout(() => { card.remove(); }, 300);
+      }
+    } else {
+      alert('Failed to archive: ' + data.message);
+    }
+  })
+  .catch(err => {
+    btn.disabled = false;
+    console.error(err);
+  });
+}
 </script>
 </body>
 </html>

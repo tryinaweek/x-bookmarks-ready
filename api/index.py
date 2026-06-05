@@ -357,6 +357,139 @@ def db_load_profile(user_id):
     return doc.to_dict() if doc.exists else None
 
 
+def db_get_bookmarks_meta(user_id):
+    if not user_id:
+        return {}
+    try:
+        docs = db.collection("users").document(user_id).collection("bookmarks_meta").get()
+        return {doc.id: doc.to_dict() for doc in docs}
+    except Exception as e:
+        print(f"Error loading bookmarks metadata: {str(e)}")
+        return {}
+
+
+def db_update_bookmark_meta(user_id, bookmark_id, data):
+    if not user_id or not bookmark_id:
+        return False
+    try:
+        ref = db.collection("users").document(user_id).collection("bookmarks_meta").document(str(bookmark_id))
+        ref.set(data, merge=True)
+        return True
+    except Exception as e:
+        print(f"Error updating bookmark metadata: {str(e)}")
+        return False
+
+
+def send_email_helper(to_email, subject, body_html):
+    resend_api_key = os.environ.get("RESEND_API_KEY")
+    if not resend_api_key:
+        print(f"\n--- [MOCK EMAIL] to {to_email} ---")
+        print(f"Subject: {subject}")
+        print(f"Body:\n{body_html}")
+        print("--------------------------\n")
+        return True
+    headers = {
+        "Authorization": f"Bearer {resend_api_key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "from": "MyBookmarks <no-reply@xbookmarksync.com>",
+        "to": to_email,
+        "subject": subject,
+        "html": body_html
+    }
+    try:
+        r = req_lib.post("https://api.resend.com/emails", json=payload, headers=headers)
+        if r.status_code in (200, 201):
+            return True
+        print(f"Resend failed: {r.text}")
+        return False
+    except Exception as e:
+        print(f"Email send error: {e}")
+        return False
+
+
+def generate_weekly_digest(user_id, email, username):
+    bookmarks, _, _ = db_load_cache_full("bookmarks_cache", user_id)
+    if not bookmarks:
+        return
+    
+    # 1. Select 3 random gems for rediscovery
+    import random
+    random.seed(datetime.now(timezone.utc).strftime("%Y-%U") + str(user_id)) # weekly stable seed
+    selected = random.sample(bookmarks, min(len(bookmarks), 3))
+    
+    # Generate 1-sentence takeaways for these 3 gems
+    gems_html_parts = []
+    for bm in selected:
+        takeaway = "AI key takeaway is loading..."
+        if CLAUDE_API_KEY:
+            prompt = f"Summarize this tweet in exactly one sentence as a practical key takeaway for someone who saved it. Speak in the active voice (e.g. 'Learn how X works'). Tweet: {bm['text']}"
+            takeaway_res, err = _call_claude_text(prompt, max_tokens=100)
+            if not err and takeaway_res:
+                takeaway = takeaway_res.strip().strip('"').strip("'")
+        gems_html_parts.append(f"""
+        <li style="margin-bottom:12px; padding:10px; border-left:3px solid #7c3aed; background:#faf5ff; list-style-type:none;">
+            <strong>@{bm['username']}:</strong> {bm['text'][:140]}...<br>
+            <em style="color:#6d28d9; font-size:13px;">💡 {takeaway}</em> &middot; 
+            <a href="{bm.get('url', 'https://x.com')}" style="color:#7c3aed; font-size:12px; text-decoration:none;">View original tweet</a>
+        </li>
+        """)
+    gems_html = "\n".join(gems_html_parts)
+    
+    # 2. Get AI Analysis to summarize recent saves and extract actions
+    analysis = db_load_analysis(user_id, "bookmarks")
+    if not analysis:
+        analysis, _ = analyze_bookmarks(bookmarks, username)
+        if analysis:
+            db_save_analysis(user_id, "bookmarks", analysis)
+            
+    summary_text = "Keep saving bookmarks to build your second brain!"
+    actions_html_parts = []
+    
+    if analysis:
+        summary_text = analysis.get("summary", summary_text)
+        actions = analysis.get("actions", [])
+        if actions:
+            for act in actions[:3]:
+                act_text = act.get("text") if isinstance(act, dict) else str(act)
+                actions_html_parts.append(f"<li style='margin-bottom:6px;'>{act_text}</li>")
+    
+    actions_html = "\n".join(actions_html_parts) if actions_html_parts else "<li>Explore new categories in your dashboard!</li>"
+    
+    # 3. Compile the Email Body
+    email_html = f"""
+    <div style="font-family:sans-serif; max-width:600px; margin:0 auto; padding:20px; border:1px solid #eee; border-radius:12px; color:#333;">
+        <h2 style="color:#7c3aed; border-bottom:1px solid #eee; padding-bottom:12px; margin-top:0;">🧠 Your Weekly Bookmark Brain Digest</h2>
+        <p>Hi @{username},</p>
+        <p>Here is your weekly summary and rediscovery spark to keep your bookmarks brain active!</p>
+        
+        <h3 style="color:#111; margin-top:24px;">📈 Your Learning Summary</h3>
+        <p style="background:#f9fafb; padding:14px; border-radius:8px; border-left:3px solid #d1d5db; line-height:1.5;">{summary_text}</p>
+        
+        <h3 style="color:#111; margin-top:24px;">⚡ Spaced Repetition: Daily Gems</h3>
+        <p style="font-size:13px; color:#666;">Here are 3 old bookmarks you saved. Re-learn from them today:</p>
+        <ul style="padding-left:0; list-style:none;">
+            {gems_html}
+        </ul>
+        
+        <h3 style="color:#111; margin-top:24px;">🛠️ Recommended Next Actions</h3>
+        <ul style="padding-left:20px;">
+            {actions_html}
+        </ul>
+        
+        <div style="margin-top:32px; padding-top:20px; border-top:1px solid #eee; text-align:center;">
+            <a href="https://xbookmarksync.com" style="display:inline-block; background:#7c3aed; color:#fff; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:14px;">Open Your Bookmark Brain</a>
+            <p style="font-size:11px; color:#aaa; margin-top:16px;">You are receiving this because you upgraded to X-Bookmarks Premium. Keep building in public!</p>
+        </div>
+    </div>
+    """
+    try:
+        send_email_helper(email, "🧠 Your Weekly Bookmark Brain Digest", email_html)
+    except Exception as e:
+        print(f"generate_weekly_digest send error: {e}")
+
+
 def get_voice_context(user_id):
     """Build a rich context string from the user's profile for AI prompts."""
     profile = _safe_db(db_load_profile, user_id)
@@ -585,6 +718,53 @@ def _call_claude(prompt, max_tokens=8192):
         return None, f"Failed to parse AI response: {e}"
     except Exception as e:
         return None, f"Claude integration error: {str(e)}"
+
+
+def _call_claude_text(prompt, max_tokens=2048):
+    try:
+        client = anthropic.Anthropic(api_key=CLAUDE_API_KEY)
+        message = client.messages.create(
+            model="claude-sonnet-4-6", max_tokens=max_tokens,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return message.content[0].text, None
+    except Exception as e:
+        return None, str(e)
+
+
+def get_relevant_bookmarks(query, bookmarks, limit=40):
+    if not query or not bookmarks:
+        return []
+    import re
+    stop_words = {'a', 'about', 'above', 'after', 'again', 'against', 'all', 'am', 'an', 'and', 'any', 'are', 'as', 'at', 'be', 'because', 'been', 'before', 'being', 'below', 'between', 'both', 'but', 'by', 'can', 'did', 'do', 'does', 'doing', 'don', 'down', 'during', 'each', 'few', 'for', 'from', 'further', 'had', 'has', 'have', 'having', 'he', 'her', 'here', 'hers', 'him', 'his', 'how', 'i', 'if', 'in', 'into', 'is', 'it', 'its', 'just', 'me', 'more', 'most', 'my', 'myself', 'no', 'nor', 'not', 'of', 'off', 'on', 'once', 'only', 'or', 'other', 'our', 'ours', 'ourselves', 'out', 'over', 'own', 'same', 'she', 'should', 'so', 'some', 'such', 'than', 'that', 'the', 'their', 'theirs', 'them', 'themselves', 'then', 'there', 'these', 'they', 'this', 'those', 'through', 'to', 'too', 'under', 'until', 'up', 'very', 'was', 'we', 'were', 'what', 'when', 'where', 'which', 'while', 'who', 'whom', 'why', 'will', 'with', 'you', 'your', 'yours', 'yourself', 'yourselves'}
+    query_words = [w.lower() for w in re.findall(r'\w+', query) if w.lower() not in stop_words]
+    if not query_words:
+        query_words = [w.lower() for w in re.findall(r'\w+', query)]
+    
+    scored = []
+    for i, bm in enumerate(bookmarks):
+        text = bm.get("text", "") or ""
+        username = bm.get("username", "") or ""
+        name = bm.get("name", "") or ""
+        note = bm.get("note", "") or ""
+        combined = f"{text} {username} {name} {note}".lower()
+        
+        score = 0
+        for qw in query_words:
+            count = combined.count(qw)
+            if count > 0:
+                score += count * 2.0
+                if re.search(r'\b' + re.escape(qw) + r'\b', combined):
+                    score += 5.0
+                if qw in note.lower():
+                    score += 8.0
+                if qw in username.lower() or qw in name.lower():
+                    score += 4.0
+        if score > 0:
+            scored.append((score, i, bm))
+            
+    scored.sort(key=lambda x: (x[0], -x[1]), reverse=True)
+    return [item[2] for item in scored[:limit]]
 
 
 def analyze_bookmarks(bookmarks, username=""):
@@ -1235,6 +1415,57 @@ def login():
         return json.dumps({"status": "error", "message": str(e)}), 401
 
 
+def extract_urls(text):
+    if not text:
+        return []
+    import re
+    raw_urls = re.findall(r'(https?://[^\s]+)', text)
+    cleaned_urls = []
+    for url in raw_urls:
+        while url and url[-1] in ('.', ',', ')', '(', '!', '?', ';', '"', "'"):
+            url = url[:-1]
+        if url and url not in cleaned_urls:
+            cleaned_urls.append(url)
+    return cleaned_urls
+
+
+def get_daily_spark_gems(user_id, bm_data, count=3):
+    if not bm_data:
+        return []
+    import random
+    # Seed with current date + user_id so it remains stable for the calendar day
+    seed_str = datetime.now(timezone.utc).strftime("%Y-%m-%d") + str(user_id)
+    random.seed(seed_str)
+    
+    selected = random.sample(bm_data, min(len(bm_data), count))
+    meta_dict = db_get_bookmarks_meta(user_id)
+    
+    gems = []
+    for bm in selected:
+        bm_id = str(bm.get("id"))
+        bm_meta = meta_dict.get(bm_id) or {}
+        bm_copy = dict(bm)
+        bm_copy["starred"] = bm_meta.get("starred", False)
+        bm_copy["archived"] = bm_meta.get("archived", False)
+        bm_copy["note"] = bm_meta.get("note", "")
+        bm_copy["takeaway"] = bm_meta.get("takeaway", "")
+        
+        # Lazy generate takeaway if not cached
+        if not bm_copy["takeaway"] and CLAUDE_API_KEY:
+            prompt = f"Summarize this tweet in exactly one sentence as a practical key takeaway for someone who saved it. Speak in the active voice (e.g. 'Learn how X works'). Tweet: {bm['text']}"
+            takeaway, err = _call_claude_text(prompt, max_tokens=150)
+            if not err and takeaway:
+                takeaway_str = takeaway.strip().strip('"').strip("'")
+                bm_copy["takeaway"] = takeaway_str
+                db_update_bookmark_meta(user_id, bm_id, {"takeaway": takeaway_str})
+            else:
+                bm_copy["takeaway"] = "Interesting insight on " + (bm['text'][:40] + "...")
+        elif not bm_copy["takeaway"]:
+            bm_copy["takeaway"] = "AI takeaway not configured."
+        gems.append(bm_copy)
+    return gems
+
+
 @app.route("/")
 def index():
     """Dashboard - unified home page."""
@@ -1275,11 +1506,33 @@ def index():
         pass
 
     original_bm_count = len(bm_data) if bm_data else 0
-    if premium_preview and bm_data:
+    
+    # Load bookmark metadata
+    meta_dict = db_get_bookmarks_meta(db_uid)
+    
+    # Map metadata & filter out archived ones for dashboard bookmarks list
+    processed_bm = []
+    if bm_data:
+        for bm in bm_data:
+            bm_id = str(bm.get("id"))
+            bm_meta = meta_dict.get(bm_id) or {}
+            if bm_meta.get("archived", False):
+                continue
+            bm_copy = dict(bm)
+            bm_copy["starred"] = bm_meta.get("starred", False)
+            bm_copy["archived"] = False
+            bm_copy["note"] = bm_meta.get("note", "")
+            bm_copy["urls"] = extract_urls(bm.get("text", ""))
+            processed_bm.append(bm_copy)
+            
+    if premium_preview and processed_bm:
         slice_limit = 50
-        bm_data_visible = bm_data[:slice_limit]
+        bm_data_visible = processed_bm[:slice_limit]
     else:
-        bm_data_visible = bm_data
+        bm_data_visible = processed_bm
+
+    # Load Daily Spark gems from all bookmarks (even un-sliced)
+    daily_gems = get_daily_spark_gems(db_uid, bm_data)
 
     bm_analysis = _safe_db(db_load_analysis, db_uid, "bookmarks")
     tw_analysis = _safe_db(db_load_analysis, db_uid, "tweets")
@@ -1298,6 +1551,7 @@ def index():
         bm_analysis=bm_analysis, tw_analysis=tw_analysis,
         suggestions=suggestions, drafts=drafts,
         premium_preview=premium_preview, ai_credits=ai_credits,
+        daily_gems=daily_gems,
     )
 
 
@@ -1551,12 +1805,30 @@ def bookmarks_view():
     except Exception:
         pass
 
-    original_bm_count = len(bookmarks) if bookmarks else 0
-    if premium_preview and bookmarks:
+    # Load metadata
+    meta_dict = db_get_bookmarks_meta(db_uid)
+    
+    processed_bookmarks = []
+    if bookmarks:
+        for bm in bookmarks:
+            bm_id = str(bm.get("id"))
+            bm_meta = meta_dict.get(bm_id) or {}
+            # Exclude archived bookmarks from active views
+            if bm_meta.get("archived", False):
+                continue
+            bm_copy = dict(bm)
+            bm_copy["starred"] = bm_meta.get("starred", False)
+            bm_copy["archived"] = False
+            bm_copy["note"] = bm_meta.get("note", "")
+            bm_copy["urls"] = extract_urls(bm.get("text", ""))
+            processed_bookmarks.append(bm_copy)
+
+    original_bm_count = len(processed_bookmarks)
+    if premium_preview and processed_bookmarks:
         slice_limit = 50
-        bookmarks_visible = bookmarks[:slice_limit]
+        bookmarks_visible = processed_bookmarks[:slice_limit]
     else:
-        bookmarks_visible = bookmarks
+        bookmarks_visible = processed_bookmarks
 
     analysis = _safe_db(db_load_analysis, db_uid, "bookmarks")
     return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
@@ -1584,20 +1856,34 @@ def bookmarks_analyze():
     if not bookmarks:
         return redirect("/bookmarks")
 
+    # Load metadata and filter out archived ones for analysis
+    meta_dict = db_get_bookmarks_meta(db_uid)
+    active_bookmarks = []
+    for bm in bookmarks:
+        bm_id = str(bm.get("id"))
+        bm_meta = meta_dict.get(bm_id) or {}
+        if bm_meta.get("archived", False):
+            continue
+        bm_copy = dict(bm)
+        bm_copy["starred"] = bm_meta.get("starred", False)
+        bm_copy["note"] = bm_meta.get("note", "")
+        bm_copy["urls"] = extract_urls(bm.get("text", ""))
+        active_bookmarks.append(bm_copy)
+
     if not premium:
         # Sliced preview for free users
         slice_limit = 50
         return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
-                               bookmarks=bookmarks[:slice_limit], analysis=None, fetched_at=fetched,
-                               premium_preview=True, ai_credits=ai_credits, bookmarks_count=len(bookmarks),
+                               bookmarks=active_bookmarks[:slice_limit], analysis=None, fetched_at=fetched,
+                               premium_preview=True, ai_credits=ai_credits, bookmarks_count=len(active_bookmarks),
                                error="Please upgrade to Premium to analyze your bookmarks with AI!")
 
     # Check and deduct credit if NOT admin and NOT bypass
     if not is_admin_user and not bypass_paywall:
         if ai_credits <= 0:
             return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
-                                   bookmarks=bookmarks, analysis=None, fetched_at=fetched,
-                                   premium_preview=False, ai_credits=ai_credits, bookmarks_count=len(bookmarks),
+                                   bookmarks=active_bookmarks, analysis=None, fetched_at=fetched,
+                                   premium_preview=False, ai_credits=ai_credits, bookmarks_count=len(active_bookmarks),
                                    error="Out of AI credits! Please buy a refill pack to run more analyses.")
         # Deduct 1 credit
         new_credits = ai_credits - 1
@@ -1606,14 +1892,127 @@ def bookmarks_analyze():
     else:
         display_credits = 9999
 
-    analysis, ai_error = analyze_bookmarks(bookmarks, session.get("username", ""))
+    analysis, ai_error = analyze_bookmarks(active_bookmarks, session.get("username", ""))
     if analysis:
         _safe_db(db_save_analysis, db_uid, "bookmarks", analysis)
     error = f"AI error: {ai_error}" if ai_error else None
     
     return render_template("bookmarks.html", connected=True, username=session.get("username", ""),
-                           bookmarks=bookmarks, analysis=analysis, fetched_at=fetched, error=error,
-                           premium_preview=False, ai_credits=display_credits, bookmarks_count=len(bookmarks))
+                           bookmarks=active_bookmarks, analysis=analysis, fetched_at=fetched, error=error,
+                           premium_preview=False, ai_credits=display_credits, bookmarks_count=len(active_bookmarks))
+
+
+@app.route("/api/ai/ask", methods=["POST"])
+def api_ai_ask():
+    if not session.get("firebase_uid"):
+        return json.dumps({"status": "error", "message": "Not authenticated"}), 401
+    db_uid = ensure_db_uid()
+    
+    profile = _safe_db(db_load_profile, db_uid) or {}
+    email = session.get("email")
+    is_admin_user = (email in ADMIN_EMAILS) or profile.get("admin", False)
+    bypass_paywall = profile.get("bypass_paywall", False)
+    premium = profile.get("premium", False) or is_admin_user or bypass_paywall
+    
+    qa_runs_count = profile.get("qa_runs_count", 0)
+    
+    # Q&A Gating (2 trial runs for free users)
+    if not premium:
+        if qa_runs_count >= 2:
+            return json.dumps({
+                "status": "paywall",
+                "message": "You have used your 2 free AI Q&A search runs. Please upgrade to Premium for unlimited Q&As!"
+            }), 402
+        qa_runs_count += 1
+        _safe_db(db.collection("users").document(db_uid).update, {"qa_runs_count": qa_runs_count})
+
+    data = request.json or {}
+    query = data.get("query", "").strip()
+    if not query:
+        return json.dumps({"status": "error", "message": "Query cannot be empty"}), 400
+
+    bookmarks, _, _ = db_load_cache_full("bookmarks_cache", db_uid)
+    if not bookmarks:
+        return json.dumps({"status": "error", "message": "No bookmarks found. Please sync your bookmarks first!"}), 400
+
+    meta_dict = db_get_bookmarks_meta(db_uid)
+    
+    active_bookmarks = []
+    for bm in bookmarks:
+        bm_id = str(bm.get("id"))
+        bm_meta = meta_dict.get(bm_id) or {}
+        if bm_meta.get("archived", False):
+            continue
+        bm_copy = dict(bm)
+        bm_copy["starred"] = bm_meta.get("starred", False)
+        bm_copy["note"] = bm_meta.get("note", "")
+        active_bookmarks.append(bm_copy)
+
+    # Scorer match
+    relevant = get_relevant_bookmarks(query, active_bookmarks, limit=40)
+    if not relevant:
+        relevant = active_bookmarks[:40]
+
+    context_lines = []
+    for idx, bm in enumerate(relevant, 1):
+        note_str = f" | User Note: {bm['note']}" if bm.get("note") else ""
+        context_lines.append(f"[{idx}] @{bm['username']}: {bm['text']} (URL: {bm.get('url', 'https://x.com')}){note_str}")
+    
+    context_str = "\n".join(context_lines)
+
+    prompt = f"""You are the "Bookmark Brain" assistant. The user is asking a question: "{query}"
+
+Here are the most relevant bookmarks saved by the user (refer to them by their indices [1], [2], etc.):
+{context_str}
+
+Answer the user's question by synthesizing the information from their bookmarks.
+Strict Rules:
+1. Base your answer ONLY on the provided bookmarks. If the bookmarks do not contain information to answer the question, state that clearly.
+2. Cite the bookmarks you use in your answer using clickable markdown links in this exact format: `[@username](url)` where `url` is the exact Twitter URL provided for that bookmark. For example: "According to [@username](url), you should do X." or "Try using tool Y ([@author](url))."
+3. Keep the answer structured, clean, and styled in markdown. Use bullet points and bold headers.
+4. Speak directly to the user (e.g. "Your bookmarks show...").
+5. Do NOT include any JSON wrapper. Return the markdown answer directly.
+"""
+
+    answer, err = _call_claude_text(prompt, max_tokens=2048)
+    if err:
+        return json.dumps({"status": "error", "message": f"AI Engine error: {err}"}), 500
+
+    return json.dumps({
+        "status": "success",
+        "answer": answer,
+        "trial_runs": qa_runs_count,
+        "is_premium": premium
+    }), 200
+
+
+@app.route("/api/bookmarks/meta", methods=["POST"])
+def api_bookmarks_meta():
+    if not session.get("firebase_uid"):
+        return json.dumps({"status": "error", "message": "Not authenticated"}), 401
+    db_uid = ensure_db_uid()
+    
+    data = request.json or {}
+    bookmark_id = data.get("bookmark_id")
+    if not bookmark_id:
+        return json.dumps({"status": "error", "message": "Missing bookmark_id"}), 400
+        
+    update_data = {}
+    if "starred" in data:
+        update_data["starred"] = bool(data["starred"])
+    if "archived" in data:
+        update_data["archived"] = bool(data["archived"])
+    if "note" in data:
+        update_data["note"] = str(data["note"]).strip()
+        
+    if not update_data:
+        return json.dumps({"status": "error", "message": "No valid fields to update"}), 400
+        
+    success = db_update_bookmark_meta(db_uid, bookmark_id, update_data)
+    if success:
+        return json.dumps({"status": "success", "message": "Bookmark metadata updated"}), 200
+    else:
+        return json.dumps({"status": "error", "message": "Database update failed"}), 500
 
 
 @app.route("/bookmarks/download", methods=["POST"])
@@ -2170,8 +2569,47 @@ def debug():
 
 @app.route("/api/cron")
 def run_cron():
-    """Auto-post scheduled tweets. Called by Vercel Cron every 15 min."""
+    """Auto-post scheduled tweets and send weekly bookmark digests. Called by Vercel Cron every 15 min."""
     now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+    # Run weekly email digest check
+    try:
+        users_list = db.collection("users").get()
+        now_dt = datetime.now(timezone.utc)
+        for u_doc in users_list:
+            ud = u_doc.to_dict()
+            u_id = u_doc.id
+            u_email = ud.get("email")
+            u_username = ud.get("username", "User")
+            
+            is_u_admin = (u_email in ADMIN_EMAILS) or ud.get("admin", False)
+            is_u_bypass = ud.get("bypass_paywall", False)
+            is_u_premium = ud.get("premium", False) or is_u_admin or is_u_bypass
+            
+            if not is_u_premium or not u_email:
+                continue
+                
+            last_sent = ud.get("last_weekly_digest_sent_at")
+            should_send = False
+            if not last_sent:
+                should_send = True
+            else:
+                try:
+                    import dateutil.parser
+                    last_sent_dt = dateutil.parser.isoparse(last_sent)
+                    # Send if it's been more than 6.9 days since the last send
+                    if (now_dt - last_sent_dt).total_seconds() >= (7 * 24 * 3600 - 3600):
+                        should_send = True
+                except Exception:
+                    should_send = True
+            
+            if should_send:
+                generate_weekly_digest(u_id, u_email, u_username)
+                db.collection("users").document(u_id).update({
+                    "last_weekly_digest_sent_at": now_dt.isoformat()
+                })
+    except Exception as e:
+        print(f"Weekly digest cron check failed: {str(e)}")
 
     # Query user-by-user to avoid composite index / collection group index requirements
     due_docs = []
