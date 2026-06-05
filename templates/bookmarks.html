@@ -415,90 +415,139 @@
 
   <!-- Tab 1: Knowledge Directory (Vaults) -->
   <div id="tab-content-vaults" class="bookmarks-tab-content active">
-    {% if analysis %}
-    <div class="card" style="margin-bottom:24px;">
-      <h2>AI Learning Synthesis</h2>
-      {% if analysis.summary %}<div class="summary-box" style="margin-bottom:24px;">{{ analysis.summary }}</div>{% endif %}
-
+    <!-- Hero Summary Greeting Card -->
+    <div class="vaults-hero-card">
+      <div class="vaults-hero-glow"></div>
+      <div class="vaults-hero-icon">🧠</div>
+      <div class="vaults-hero-content">
+        <h2 style="font-size:16px; font-weight:800; margin-bottom:6px; color:var(--text);">AI Learning Synthesis</h2>
+        {% if analysis.summary %}
+        <p style="font-size:13.5px; line-height:1.6; color:var(--text-muted); margin:0;">{{ analysis.summary }}</p>
+        {% endif %}
+      </div>
+    </div>
+    
+    <!-- Segmented Navigation for Vault Sections (Apple Style) -->
+    <div class="vaults-sub-nav">
+      <button class="vaults-sub-btn active" onclick="switchVaultsSubTab('directory')">
+        📁 Category Vaults
+      </button>
+      <button class="vaults-sub-btn" onclick="switchVaultsSubTab('timeline')">
+        📈 Research Timeline
+      </button>
+      <button class="vaults-sub-btn" onclick="switchVaultsSubTab('actions')">
+        ⚡ Recommended Actions
+      </button>
+      <button class="vaults-sub-btn" onclick="switchVaultsSubTab('gems-stale')">
+        💎 Gems & Cleanup
+      </button>
+    </div>
+    
+    <!-- Sub-tab Content: Directory Categories -->
+    <div id="vaults-sub-content-directory" class="vaults-sub-content active">
       {% if analysis.categories %}
-      <div class="analysis-section">
-        <h3>Directory Category Vaults <span style="font-weight:400; font-size:11px; color:#888;">(click to explore vault)</span></h3>
+      <div class="analysis-section" style="margin-bottom:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:8px;">
+          <h3 style="font-size:15px; font-weight:700; color:var(--text); margin:0;">Directory Category Vaults</h3>
+          <span style="font-size:12px; color:var(--text-light);">Click any folder card to explore its synthesized wiki & source links</span>
+        </div>
         <div class="category-grid">
           {% for cat in analysis.categories %}
           <div class="category-card" onclick="openCategoryVault('{{ cat.name }}', {{ cat.bookmark_ids | tojson }}, '{{ cat.summary | replace("'", "\\'") | replace('"', '\\"') }}')" data-name="{{ cat.name }}">
-            <div class="category-name" style="font-size:16px; font-weight:700; color:var(--primary); margin-bottom:6px; display:flex; align-items:center; gap:8px;">
-              <span>📁</span> {{ cat.name }}
+            <div class="category-card-accent"></div>
+            <div class="category-card-header">
+              <span class="category-card-icon">📁</span>
+              <span class="category-card-count">{{ cat.count }} saves</span>
             </div>
-            <div class="category-count" style="font-size:12px; font-weight:600; color:var(--text-muted); margin-bottom:8px;">{{ cat.count }} bookmark{{ 's' if cat.count != 1 }}</div>
-            <div class="category-summary" style="font-size:13px; color:#4b5563; line-height:1.5;">{{ cat.summary }}</div>
+            <div class="category-card-title">{{ cat.name }}</div>
+            <div class="category-card-summary">{{ cat.summary }}</div>
           </div>
           {% endfor %}
         </div>
       </div>
       {% endif %}
-      
-      <!-- Timeline and recommendations -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px;">
-        {% if analysis.timeline %}
-        <div class="analysis-section" style="margin-bottom:0;">
-          <h3>Research Timeline</h3>
+    </div>
+    
+    <!-- Sub-tab Content: Research Timeline -->
+    <div id="vaults-sub-content-timeline" class="vaults-sub-content">
+      {% if analysis.timeline %}
+      <div class="analysis-section" style="margin-bottom:0; max-width:800px;">
+        <h3 style="font-size:15px; font-weight:700; color:var(--text); margin-bottom:20px;">Research Timeline</h3>
+        <div class="timeline-container-new">
           {% for phase in analysis.timeline %}
-          <div class="timeline-item">
-            <span class="timeline-period">{{ phase.period }}</span>
-            <span class="timeline-theme">{{ phase.theme }}</span>
-            <span class="timeline-count">{{ phase.count | default('?') }} bookmarks</span>
-          </div>
-          {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if analysis.actions %}
-        <div class="analysis-section" style="margin-bottom:0;">
-          <h3>Recommended Actions</h3>
-          {% for action in analysis.actions %}
-          <div class="action-item">
-            {% if action is mapping %}
-            <div class="action-text">{{ action.text }}</div>
-            {% if action.bookmark_ids and bookmarks %}
-            <div class="action-refs">
-              {% for bid in action.bookmark_ids %}{% if bid <= bookmarks|length %}
-              <a href="{{ bookmarks[bid - 1].url }}" target="_blank" class="action-ref">Bookmark #{{ bid }}</a>
-              {% endif %}{% endfor %}
+          <div class="timeline-item-new">
+            <div class="timeline-dot-new"></div>
+            <div class="timeline-meta-new">
+              <span class="timeline-period-new">{{ phase.period }}</span>
+              <span class="timeline-count-new">{{ phase.count | default('?') }} saves</span>
             </div>
-            {% endif %}
-            {% else %}<div class="action-text">{{ action }}</div>{% endif %}
+            <div class="timeline-theme-new">{{ phase.theme }}</div>
           </div>
           {% endfor %}
         </div>
-        {% endif %}
       </div>
-      
-      <!-- Gems & Stale -->
-      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px; margin-top:24px;">
+      {% endif %}
+    </div>
+    
+    <!-- Sub-tab Content: Recommended Actions -->
+    <div id="vaults-sub-content-actions" class="vaults-sub-content">
+      {% if analysis.actions %}
+      <div class="analysis-section" style="margin-bottom:0; max-width:800px;">
+        <h3 style="font-size:15px; font-weight:700; color:var(--text); margin-bottom:20px;">AI Recommended Actions</h3>
+        <div class="actions-grid-new">
+          {% for action in analysis.actions %}
+          <div class="action-card-new">
+            <div class="action-icon-new">💡</div>
+            <div class="action-content-new">
+              {% if action is mapping %}
+              <div class="action-description-new">{{ action.text }}</div>
+              {% if action.bookmark_ids and bookmarks %}
+              <div class="action-refs-new">
+                {% for bid in action.bookmark_ids %}{% if bid <= bookmarks|length %}
+                <a href="{{ bookmarks[bid - 1].url }}" target="_blank" class="action-ref-new">Source #{{ bid }}</a>
+                {% endif %}{% endfor %}
+              </div>
+              {% endif %}
+              {% else %}
+              <div class="action-description-new">{{ action }}</div>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endif %}
+    </div>
+    
+    <!-- Sub-tab Content: Gems & Cleanup -->
+    <div id="vaults-sub-content-gems-stale" class="vaults-sub-content">
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:24px;">
+        <!-- Hidden Gems -->
         {% if analysis.gems %}
         <div class="analysis-section" style="margin-bottom:0;">
-          <h3>Hidden Gems</h3>
+          <h3 style="font-size:15px; font-weight:700; color:var(--text); margin-bottom:16px;">💎 Hidden Gems</h3>
           {% for gem in analysis.gems %}
-          <div class="gem-item">
-            <div class="gem-title" style="font-weight:600;">{{ gem.title }}</div>
-            <div class="gem-reason" style="font-size:12px; color:var(--text-muted); margin-top:2px;">{{ gem.reason }}</div>
+          <div class="gem-card-new">
+            <div class="gem-card-title">{{ gem.title }}</div>
+            <div class="gem-card-reason">{{ gem.reason }}</div>
             {% if bookmarks and gem.id and gem.id <= bookmarks|length %}
-            <div class="gem-ref" style="margin-top:4px;"><a href="{{ bookmarks[gem.id - 1].url }}" target="_blank" style="color:var(--primary); font-size:11px; text-decoration:none;">View tweet #{{ gem.id }} &rarr;</a></div>
+            <a href="{{ bookmarks[gem.id - 1].url }}" target="_blank" class="gem-card-link">View tweet #{{ gem.id }} &rarr;</a>
             {% endif %}
           </div>
           {% endfor %}
         </div>
         {% endif %}
-
+        
+        <!-- Probably Stale -->
         {% if analysis.stale %}
         <div class="analysis-section" style="margin-bottom:0;">
-          <h3>Probably Stale</h3>
+          <h3 style="font-size:15px; font-weight:700; color:var(--text); margin-bottom:16px;">🗑️ Probably Stale (Cleanup)</h3>
           {% for item in analysis.stale %}
-          <div class="stale-item">
-            <div class="stale-title" style="font-weight:600;">{{ item.title }}</div>
-            <div class="stale-reason" style="font-size:12px; color:var(--text-muted); margin-top:2px;">{{ item.reason }}</div>
+          <div class="stale-card-new">
+            <div class="stale-card-title">{{ item.title }}</div>
+            <div class="stale-card-reason">{{ item.reason }}</div>
             {% if bookmarks and item.id and item.id <= bookmarks|length %}
-            <div class="stale-ref" style="margin-top:4px;"><a href="{{ bookmarks[item.id - 1].url }}" target="_blank" style="color:var(--primary); font-size:11px; text-decoration:none;">View tweet #{{ item.id }} &rarr;</a></div>
+            <a href="{{ bookmarks[item.id - 1].url }}" target="_blank" class="stale-card-link">View tweet #{{ item.id }} &rarr;</a>
             {% endif %}
           </div>
           {% endfor %}
@@ -703,8 +752,7 @@ function openRefillModal() {
 }
 function closeRefillModal() {
   document.getElementById('refillModal').classList.remove('show');
-}
-function showLoading() {
+}function showLoading() {
   document.getElementById('loadingOverlay').classList.add('show');
 }
 
@@ -719,6 +767,17 @@ function switchBookmarksTab(tabName) {
   document.getElementById(`nav-tab-${tabName}`).classList.add('active');
 }
 
+function switchVaultsSubTab(subTabId) {
+  document.querySelectorAll('.vaults-sub-content').forEach(el => {
+    el.classList.remove('active');
+  });
+  document.querySelectorAll('.vaults-sub-btn').forEach(el => {
+    el.classList.remove('active');
+  });
+  
+  document.getElementById('vaults-sub-content-' + subTabId).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
 function openCategoryVault(catName, bookmarkIds, catSummary) {
   activeVaultBookmarkIds = bookmarkIds;
   document.getElementById('drawerTitle').innerText = '📁 ' + catName;
