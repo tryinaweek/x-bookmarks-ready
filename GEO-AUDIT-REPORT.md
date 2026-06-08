@@ -1,4 +1,4 @@
-# GEO Audit Report: X-Bookmarks
+# GEO Audit Report: XBookmarkSync
 
 **Audit Date:** 2026-06-07
 **URL:** https://xbookmarksync.com
@@ -11,7 +11,7 @@
 
 **Overall GEO Score: 9/100 (Critical)**
 
-X-Bookmarks is effectively invisible to AI systems. The site has only 2 public pages with ~490 total words of content, zero structured data, no robots.txt or sitemap, no llms.txt, no brand presence on any third-party platform, and no content substantive enough for AI models to cite. The product is freshly launched (June 2026) with 2 Chrome Web Store users and zero external mentions anywhere on the web. The site's only strength is that it uses server-side rendering (Flask/Jinja2), meaning AI crawlers can at least read what little content exists.
+XBookmarkSync is effectively invisible to AI systems. The site has only 2 public pages with ~490 total words of content, zero structured data, no robots.txt or sitemap, no llms.txt, no brand presence on any third-party platform, and no content substantive enough for AI models to cite. The product is freshly launched (June 2026) with 2 Chrome Web Store users and zero external mentions anywhere on the web. The site's only strength is that it uses server-side rendering (Flask/Jinja2), meaning AI crawlers can at least read what little content exists.
 
 ### Score Breakdown
 
@@ -40,13 +40,13 @@ X-Bookmarks is effectively invisible to AI systems. The site has only 2 public p
 **Fix:** Expand homepage to 800-1500 words covering: what the product does, how AI works, features, use cases, and concrete benefits. Add FAQ section with 5-10 questions.
 
 ### 3. Zero Brand Presence on Any Platform
-**Impact:** AI models cannot recognize "X-Bookmarks" as a known entity. No training data references this product anywhere.
+**Impact:** AI models cannot recognize "XBookmarkSync" as a known entity. No training data references this product anywhere.
 **Platforms checked:** YouTube, Reddit, X/Twitter, LinkedIn, Product Hunt, GitHub, Wikipedia, review sites -- all absent.
 **Fix:** Establish presence on X/Twitter (official account), launch on Product Hunt, seed Reddit discussions, create YouTube demo video.
 
 ### 4. Brand Name Collision
-**Impact:** "X-Bookmarks" is indistinguishable from the generic phrase "X bookmarks" and collides with a competitor at x-bookmarks.com. AI models cannot disambiguate.
-**Fix:** Consider whether the brand name is distinctive enough for AI entity recognition. At minimum, always use "X-Bookmarks by xbookmarksync" in external references.
+**Impact:** "XBookmarkSync" is indistinguishable from the generic phrase "X bookmarks" and collides with a competitor at xbookmarksync.com. AI models cannot disambiguate.
+**Fix:** Consider whether the brand name is distinctive enough for AI entity recognition. At minimum, always use "XBookmarkSync by xbookmarksync" in external references.
 
 ### 5. No About/Team Page
 **Impact:** Zero authoritativeness signals. AI models cannot determine who operates this product or their credentials.
@@ -70,7 +70,7 @@ X-Bookmarks is effectively invisible to AI systems. The site has only 2 public p
 
 ### 9. Missing Meta Description on Homepage
 **Impact:** Search engines generate their own summary; AI models have no concise product description.
-**Fix:** Add `<meta name="description" content="X-Bookmarks syncs your X/Twitter bookmarks automatically, organizes them with AI, and surfaces content insights. Free Chrome extension.">`.
+**Fix:** Add `<meta name="description" content="XBookmarkSync syncs your X/Twitter bookmarks automatically, organizes them with AI, and surfaces content insights. Free Chrome extension.">`.
 
 ### 10. Missing Open Graph and Twitter Card Tags
 **Impact:** Social sharing shows no preview image or description. Particularly damaging for a Twitter/X product.
@@ -94,7 +94,7 @@ X-Bookmarks is effectively invisible to AI systems. The site has only 2 public p
 
 ### 14. No FAQ Content
 **Impact:** FAQ is the single most citable content format for AI systems. Missing entirely.
-**Fix:** Add FAQ section to homepage with 5-10 questions covering: what is X-Bookmarks, how does AI work, is data private, pricing, compatibility.
+**Fix:** Add FAQ section to homepage with 5-10 questions covering: what is XBookmarkSync, how does AI work, is data private, pricing, compatibility.
 
 ### 15. No Security Headers Configured
 **Impact:** Missing CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy in vercel.json.
@@ -146,18 +146,18 @@ The site is essentially uncitable. With ~150 words of homepage content consistin
 
 **Rewrite Suggestion -- Add this Definition Block below H1:**
 
-> X-Bookmarks is a Chrome extension that syncs your X (Twitter) bookmarks to a personal dashboard and uses AI to automatically categorize, tag, and surface your saved content. It turns a disorganized bookmark list into a searchable knowledge base, helping users rediscover saved posts by topic, sentiment, or recency.
+> XBookmarkSync is a Chrome extension that syncs your X (Twitter) bookmarks to a personal dashboard and uses AI to automatically categorize, tag, and surface your saved content. It turns a disorganized bookmark list into a searchable knowledge base, helping users rediscover saved posts by topic, sentiment, or recency.
 
-This single paragraph would dramatically improve citability for queries like "What is X-Bookmarks?" or "best Twitter bookmark manager."
+This single paragraph would dramatically improve citability for queries like "What is XBookmarkSync?" or "best Twitter bookmark manager."
 
 **Suggested FAQ Questions:**
-1. How does X-Bookmarks use AI to organize bookmarks?
-2. Is my X/Twitter data private with X-Bookmarks?
-3. How many bookmarks can X-Bookmarks sync?
-4. Does X-Bookmarks work with Twitter Lists?
-5. Is X-Bookmarks free?
+1. How does XBookmarkSync use AI to organize bookmarks?
+2. Is my X/Twitter data private with XBookmarkSync?
+3. How many bookmarks can XBookmarkSync sync?
+4. Does XBookmarkSync work with Twitter Lists?
+5. Is XBookmarkSync free?
 6. What data does the extension collect?
-7. How do I install X-Bookmarks?
+7. How do I install XBookmarkSync?
 8. Can I search my bookmarks by topic?
 
 ---
@@ -166,7 +166,7 @@ This single paragraph would dramatically improve citability for queries like "Wh
 
 The product has zero third-party presence anywhere on the internet. It is not mentioned on YouTube, Reddit, X/Twitter, LinkedIn, Product Hunt, GitHub, Wikipedia, or any review/roundup article. The Chrome Web Store listing exists (the only external presence) but has 2 users and 0 reviews.
 
-**Critical Name Collision:** The competitor at x-bookmarks.com owns the exact brand name as a domain and has an established Chrome extension. Multiple other products use similar names (XBookmark, X Bookmarks Exporter, XSaved). AI models queried about "X-Bookmarks" will almost certainly reference the competitor or treat it as a generic phrase.
+**Critical Name Collision:** The competitor at xbookmarksync.com owns the exact brand name as a domain and has an established Chrome extension. Multiple other products use similar names (XBookmark, X Bookmarks Exporter, XSaved). AI models queried about "XBookmarkSync" will almost certainly reference the competitor or treat it as a generic phrase.
 
 **Competitor Landscape (all absent from for xbookmarksync.com):**
 - ContextBolt's "9 Best Twitter Bookmark Managers in 2026" -- not listed
@@ -226,7 +226,7 @@ Zero structured data of any kind. No JSON-LD, no Microdata, no RDFa. This means:
 {
   "@context": "https://schema.org",
   "@type": "Organization",
-  "name": "X-Bookmarks",
+  "name": "XBookmarkSync",
   "url": "https://xbookmarksync.com",
   "description": "AI-powered bookmark sync and content engine for X/Twitter",
   "contactPoint": {
@@ -235,7 +235,7 @@ Zero structured data of any kind. No JSON-LD, no Microdata, no RDFa. This means:
     "email": "support@xbookmarksync.com"
   },
   "sameAs": [
-    "https://chromewebstore.google.com/detail/x-bookmarks/dlmbmjcbcancmcbglcobpljldmiglldl"
+    "https://chromewebstore.google.com/detail/xbookmarksync/dlmbmjcbcancmcbglcobpljldmiglldl"
   ]
 }
 ```
@@ -245,12 +245,12 @@ Zero structured data of any kind. No JSON-LD, no Microdata, no RDFa. This means:
 {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  "name": "X-Bookmarks",
+  "name": "XBookmarkSync",
   "description": "Chrome extension that syncs X/Twitter bookmarks and uses AI to categorize and organize saved content",
   "url": "https://xbookmarksync.com",
   "applicationCategory": "BrowserApplication",
   "operatingSystem": "Chrome",
-  "installUrl": "https://chromewebstore.google.com/detail/x-bookmarks/dlmbmjcbcancmcbglcobpljldmiglldl",
+  "installUrl": "https://chromewebstore.google.com/detail/xbookmarksync/dlmbmjcbcancmcbglcobpljldmiglldl",
   "offers": {
     "@type": "Offer",
     "price": "0",
@@ -270,12 +270,12 @@ Zero structured data of any kind. No JSON-LD, no Microdata, no RDFa. This means:
 {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  "name": "X-Bookmarks",
+  "name": "XBookmarkSync",
   "url": "https://xbookmarksync.com",
   "description": "AI-powered bookmark sync and content engine for X/Twitter",
   "publisher": {
     "@type": "Organization",
-    "name": "X-Bookmarks"
+    "name": "XBookmarkSync"
   }
 }
 ```
@@ -305,7 +305,7 @@ Zero structured data of any kind. No JSON-LD, no Microdata, no RDFa. This means:
 
 3. **Add Organization + SoftwareApplication JSON-LD** -- 45 minutes. Gives AI models machine-readable product identity. Expected impact: +15-20 points on Schema score.
 
-4. **Write a 200-word product description paragraph on the homepage** -- 30 minutes. One self-contained paragraph explaining what X-Bookmarks does, for whom, and why. Expected impact: +10-15 points on Citability.
+4. **Write a 200-word product description paragraph on the homepage** -- 30 minutes. One self-contained paragraph explaining what XBookmarkSync does, for whom, and why. Expected impact: +10-15 points on Citability.
 
 5. **Create an official X/Twitter account and pin a product tweet** -- 15 minutes. Establishes social presence on the exact platform the product serves. Expected impact: +3-5 points on Brand Authority.
 
@@ -352,8 +352,8 @@ Zero structured data of any kind. No JSON-LD, no Microdata, no RDFa. This means:
 
 | URL | Title | GEO Issues |
 |---|---|---|
-| https://xbookmarksync.com/ | X-Bookmarks - AI-Powered Bookmark Sync & Content Engine | 15 (no meta desc, no schema, no OG, thin content, no FAQ, no social proof, no canonical, no author) |
-| https://xbookmarksync.com/privacy | Privacy Policy - X-Bookmarks | 5 (no schema, no OG, no canonical, no meta desc, no breadcrumb) |
+| https://xbookmarksync.com/ | XBookmarkSync - AI-Powered Bookmark Sync & Content Engine | 15 (no meta desc, no schema, no OG, thin content, no FAQ, no social proof, no canonical, no author) |
+| https://xbookmarksync.com/privacy | Privacy Policy - XBookmarkSync | 5 (no schema, no OG, no canonical, no meta desc, no breadcrumb) |
 
 ## Appendix: Fetch Failures
 

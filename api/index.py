@@ -480,7 +480,7 @@ def generate_weekly_digest(user_id, email, username):
         
         <div style="margin-top:32px; padding-top:20px; border-top:1px solid #eee; text-align:center;">
             <a href="https://xbookmarksync.com" style="display:inline-block; background:#7c3aed; color:#fff; padding:10px 20px; border-radius:8px; text-decoration:none; font-weight:600; font-size:14px;">Open Your Bookmark Brain</a>
-            <p style="font-size:11px; color:#aaa; margin-top:16px;">You are receiving this because you upgraded to X-Bookmarks Premium. Keep building in public!</p>
+            <p style="font-size:11px; color:#aaa; margin-top:16px;">You are receiving this because you upgraded to XBookmarkSync Premium. Keep building in public!</p>
         </div>
     </div>
     """
@@ -1619,11 +1619,11 @@ def sitemap_xml():
 
 @app.route("/llms.txt")
 def llms_txt():
-    content = """# X-Bookmarks
+    content = """# XBookmarkSync
 
 > AI-powered bookmark sync and content engine for X/Twitter
 
-X-Bookmarks is a Chrome extension and web dashboard that syncs your X (formerly Twitter) bookmarks into a private, AI-powered knowledge base.
+XBookmarkSync is a Chrome extension and web dashboard that syncs your X (formerly Twitter) bookmarks into a private, AI-powered knowledge base.
 
 ## Features
 
@@ -1638,7 +1638,7 @@ X-Bookmarks is a Chrome extension and web dashboard that syncs your X (formerly 
 ## Links
 
 - Homepage: https://xbookmarksync.com
-- Chrome Web Store: https://chromewebstore.google.com/detail/x-bookmarks/dlmbmjcbcancmcbglcobpljldmiglldl
+- Chrome Web Store: https://chromewebstore.google.com/detail/xbookmarksync/dlmbmjcbcancmcbglcobpljldmiglldl
 - Privacy Policy: https://xbookmarksync.com/privacy
 - Support: support@xbookmarksync.com
 """
@@ -2138,7 +2138,7 @@ def checkout():
             "price_data": {
                 "currency": "usd",
                 "product_data": {
-                    "name": "X-Bookmarks Premium Upgrade",
+                    "name": "XBookmarkSync Premium Upgrade",
                     "description": "Lifetime access to the full dashboard plus 3 AI Analyses.",
                 },
                 "unit_amount": 900,

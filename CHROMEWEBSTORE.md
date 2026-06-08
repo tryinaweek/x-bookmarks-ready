@@ -1,11 +1,11 @@
-# Chrome Web Store Listing — X-Bookmarks: AI Sync & Archive
+# Chrome Web Store Listing — XBookmarkSync: AI Sync & Archive
 
 > Last Updated: 2026-06-03
 
 ## Store Listing
 
 **Extension Name**  
-X-Bookmarks: AI Sync & Archive
+XBookmarkSync: AI Sync & Archive
 
 **Short Description**  
 Sync your X/Twitter Bookmarks directly to your MyBookmarks dashboard in one click without developer API keys.
@@ -13,7 +13,7 @@ Sync your X/Twitter Bookmarks directly to your MyBookmarks dashboard in one clic
 **Detailed Description**  
 Save bookmarks on X/Twitter and instantly organize them with AI. 
 
-Most people save hundreds of bookmarks into folders and never visit them again. **X-Bookmarks** is the Chrome extension companion that breaks this cycle. It lets you import all your scattered bookmarks into your personal MyBookmarks workspace with a single click—no expensive developer API keys required.
+Most people save hundreds of bookmarks into folders and never visit them again. **XBookmarkSync** is the Chrome extension companion that breaks this cycle. It lets you import all your scattered bookmarks into your personal MyBookmarks workspace with a single click—no expensive developer API keys required.
 
 Once imported, our AI-powered dashboard parses your bookmarks, automatically grouping them into clear categories, mapping your learning interests over a visual timeline, and flagging stale or dead links to help you keep your digital space clean. Most importantly, it serves as a content engine: it repurposes the knowledge inside your saved bookmarks into fresh tweet ideas, allowing you to compose and publish tweets directly back to X from your dashboard.
 
