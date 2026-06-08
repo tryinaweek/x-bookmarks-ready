@@ -1561,6 +1561,90 @@ def privacy():
     return render_template("privacy.html")
 
 
+@app.route("/about")
+def about():
+    """About the Author & Project page for E-E-A-T trust signals."""
+    return render_template("about.html")
+
+
+@app.route("/terms")
+def terms():
+    """Terms of Service page."""
+    return render_template("terms.html")
+
+
+@app.route("/robots.txt")
+def robots_txt():
+    content = """User-agent: *
+Allow: /
+
+User-agent: GPTBot
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+Sitemap: https://xbookmarksync.com/sitemap.xml
+"""
+    return app.response_class(content, mimetype="text/plain")
+
+
+@app.route("/sitemap.xml")
+def sitemap_xml():
+    content = """<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://xbookmarksync.com/</loc>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://xbookmarksync.com/privacy</loc>
+    <changefreq>monthly</changefreq>
+    <priority>0.3</priority>
+  </url>
+</urlset>
+"""
+    return app.response_class(content, mimetype="application/xml")
+
+
+@app.route("/llms.txt")
+def llms_txt():
+    content = """# X-Bookmarks
+
+> AI-powered bookmark sync and content engine for X/Twitter
+
+X-Bookmarks is a Chrome extension and web dashboard that syncs your X (formerly Twitter) bookmarks into a private, AI-powered knowledge base.
+
+## Features
+
+- Automatic one-click bookmark syncing from X/Twitter (no API keys needed)
+- AI-powered categorization by topic using Claude by Anthropic
+- Research timeline tracker showing bookmarking patterns over time
+- Smart search and filtering by keyword, author, topic, or date
+- Content drafting and repurposing from saved bookmarks
+- Excel export of your full bookmark collection with AI-generated categories
+- Private and secure: direct encrypted sync to personal Cloud Firestore database
+
+## Links
+
+- Homepage: https://xbookmarksync.com
+- Chrome Web Store: https://chromewebstore.google.com/detail/x-bookmarks/dlmbmjcbcancmcbglcobpljldmiglldl
+- Privacy Policy: https://xbookmarksync.com/privacy
+- Support: support@xbookmarksync.com
+"""
+    return app.response_class(content, mimetype="text/plain")
+
+
 @app.route("/test-landing")
 def test_landing():
     """Temporary preview route for the new landing page design."""

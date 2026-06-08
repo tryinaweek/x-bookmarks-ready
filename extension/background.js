@@ -110,6 +110,43 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         console.error("Failed to upload tweets:", err);
         sendResponse({ status: "error", message: err.message });
       }
+    } else if (request.type === "UPLOAD_DATA") {
+      try {
+        const credentials = await chrome.storage.local.get(["firebaseIdToken", "backendUrl"]);
+        const token = credentials.firebaseIdToken;
+        let backendUrl = credentials.backendUrl || "http://127.0.0.1:5001";
+        
+        if (!token) {
+          sendResponse({ success: false, message: "Not authenticated. Please log in to your dashboard first." });
+          return;
+        }
+
+        if (backendUrl.endsWith("/")) {
+          backendUrl = backendUrl.slice(0, -1);
+        }
+
+        const endpoint = request.endpoint.startsWith("/") ? request.endpoint : "/" + request.endpoint;
+
+        const response = await fetch(`${backendUrl}${endpoint}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${token}`
+          },
+          body: JSON.stringify(request.payload)
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          throw new Error(`Server returned ${response.status}: ${errText}`);
+        }
+
+        const data = await response.json();
+        sendResponse({ success: true, data });
+      } catch (err) {
+        console.error("Failed to upload data:", err);
+        sendResponse({ success: false, message: err.message });
+      }
     } else if (request.type === "GET_STATUS") {
       try {
         const credentials = await chrome.storage.local.get(["firebaseUid", "backendUrl", "premium"]);
