@@ -2652,13 +2652,13 @@ def settings_save():
 
 @app.route("/debug")
 def debug():
-    env_info = {k: str(v) for k, v in request.environ.items() if isinstance(v, (str, int, float, bool))}
-    headers_info = {k: v for k, v in request.headers.items()}
+    if not session.get("firebase_uid"):
+        return redirect("/")
     info = {
-        "url": request.url,
-        "path": request.path,
-        "headers": headers_info,
-        "environ": env_info
+        "session_firebase_uid": session.get("firebase_uid"),
+        "session_username": session.get("username"),
+        "session_db_user_id": session.get("db_user_id"),
+        "firebase_project": firebase_admin.get_app().project_id if firebase_admin.get_app() else None
     }
     return f"<html><body><pre>{json.dumps(info, indent=2, default=str)}</pre></body></html>"
 
