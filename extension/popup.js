@@ -15,7 +15,7 @@ async function updateUI() {
       connectionBadge.className = "status-badge badge-linked";
       connectionBadge.textContent = "Linked";
       backendUrlSpan.textContent = backendUrl.replace(/^https?:\/\//, "");
-      instructionsText.textContent = "Ready! Go to twitter.com/i/bookmarks and click the floating 'Sync Bookmarks' panel to synchronize your bookmarks.";
+      instructionsText.textContent = "Ready! Go to x.com/i/bookmarks (or x.com/i/history) and click the floating 'Sync Bookmarks' panel to synchronize.";
       actionBtn.href = backendUrl;
       actionBtn.textContent = "Go to Dashboard";
     } else {

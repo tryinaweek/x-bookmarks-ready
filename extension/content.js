@@ -142,7 +142,7 @@ function isProfilePage() {
 
 // Check URL and manage sync panel visibility for Twitter SPA
 function checkPageAndInject() {
-  const isBookmarksPage = window.location.pathname === "/i/bookmarks" || window.location.pathname.startsWith("/i/bookmarks");
+  const isBookmarksPage = window.location.pathname === "/i/bookmarks" || window.location.pathname.startsWith("/i/bookmarks") || window.location.pathname === "/i/history" || window.location.pathname.startsWith("/i/history");
   const isProfile = isProfilePage();
   const existingPanel = document.getElementById("myBookmarksSyncPanel");
 
