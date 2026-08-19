@@ -36,6 +36,18 @@ except Exception:
 app = Flask(__name__, template_folder="../templates", static_folder="../static")
 app.secret_key = os.environ.get("SESSION_SECRET", secrets.token_hex(32))
 
+class VercelPathMiddleware:
+    def __init__(self, wsgi_app):
+        self.wsgi_app = wsgi_app
+
+    def __call__(self, environ, start_response):
+        matched_path = environ.get('HTTP_X_MATCHED_PATH')
+        if matched_path:
+            environ['PATH_INFO'] = matched_path
+        return self.wsgi_app(environ, start_response)
+
+app.wsgi_app = VercelPathMiddleware(app.wsgi_app)
+
 @app.context_processor
 def inject_firebase_config():
     api_key = os.environ.get("FIREBASE_API_KEY", "").strip()
