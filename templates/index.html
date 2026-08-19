@@ -371,92 +371,109 @@
     .features-section {
       background: #ffffff;
       border-top: 1px solid var(--border);
-      padding: 60px 40px;
+      padding: 80px 40px;
     }
     .features-inner {
-      max-width: 900px;
+      max-width: 1000px;
       margin: 0 auto;
     }
     .features-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
-      gap: 24px;
-      margin-top: 36px;
+      gap: 32px;
+      margin-top: 48px;
     }
-    @media (max-width: 768px) {
-      .features-grid { grid-template-columns: 1fr; }
+    @media (max-width: 868px) {
+      .features-grid { grid-template-columns: 1fr; gap: 24px; }
     }
     .feature-card {
-      background: #f8fafc;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 24px;
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.08);
+      border-radius: 16px;
+      padding: 32px;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .feature-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.04);
+      border-color: rgba(0, 0, 0, 0.15);
     }
     .feature-card h4 {
-      font-size: 15px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      color: #0f172a;
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 10px;
+      color: #1d1d1f;
+      letter-spacing: -0.2px;
     }
     .feature-card p {
-      font-size: 13px;
-      color: var(--text-muted);
+      font-size: 14px;
+      color: #86868b;
       line-height: 1.6;
     }
     .feature-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 8px;
-      background: #f3e8ff;
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      background: #f5f5f7;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 14px;
-      font-size: 18px;
+      margin-bottom: 20px;
+      font-size: 20px;
+      color: #1d1d1f;
     }
 
     /* How it works */
     .how-section {
-      background: #fafafa;
+      background: #f5f5f7;
       border-top: 1px solid var(--border);
-      padding: 60px 40px;
+      padding: 80px 40px;
     }
     .how-inner {
-      max-width: 700px;
+      max-width: 1000px;
       margin: 0 auto;
     }
     .how-steps {
-      margin-top: 32px;
-      display: flex;
-      flex-direction: column;
-      gap: 20px;
+      margin-top: 48px;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 32px;
+    }
+    @media (max-width: 868px) {
+      .how-steps { grid-template-columns: 1fr; gap: 28px; }
     }
     .how-step {
       display: flex;
+      flex-direction: column;
       gap: 16px;
       align-items: flex-start;
+      background: #ffffff;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      border-radius: 16px;
+      padding: 32px;
     }
     .how-num {
-      width: 32px;
-      height: 32px;
-      min-width: 32px;
+      width: 36px;
+      height: 36px;
+      min-width: 36px;
       border-radius: 50%;
-      background: var(--primary);
-      color: #fff;
+      background: #1d1d1f;
+      color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 14px;
-      font-weight: 700;
+      font-size: 15px;
+      font-weight: 600;
     }
     .how-step h4 {
-      font-size: 15px;
-      font-weight: 700;
-      margin-bottom: 4px;
+      font-size: 17px;
+      font-weight: 600;
+      color: #1d1d1f;
+      margin-bottom: 6px;
     }
     .how-step p {
-      font-size: 13px;
-      color: var(--text-muted);
+      font-size: 14px;
+      color: #86868b;
       line-height: 1.6;
     }
 
@@ -464,27 +481,49 @@
     .faq-section {
       background: #ffffff;
       border-top: 1px solid var(--border);
-      padding: 60px 40px;
+      padding: 80px 40px;
     }
     .faq-inner {
-      max-width: 700px;
+      max-width: 760px;
       margin: 0 auto;
     }
     .faq-item {
-      border-bottom: 1px solid var(--border);
-      padding: 20px 0;
+      border-bottom: 1px solid #d2d2d7;
+      padding: 8px 0;
     }
     .faq-item:last-child { border-bottom: none; }
     .faq-q {
-      font-size: 15px;
-      font-weight: 700;
-      color: #0f172a;
-      margin-bottom: 8px;
+      font-size: 17px;
+      font-weight: 600;
+      color: #1d1d1f;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 24px 0;
+      user-select: none;
     }
     .faq-a {
-      font-size: 14px;
-      color: var(--text-muted);
-      line-height: 1.7;
+      font-size: 15px;
+      color: #86868b;
+      line-height: 1.6;
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      padding-bottom: 0;
+      transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding-bottom 0.3s ease;
+    }
+    .faq-item.active .faq-a {
+      max-height: 250px;
+      opacity: 1;
+      padding-bottom: 24px;
+    }
+    .faq-icon {
+      display: inline-flex;
+      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .faq-item.active .faq-icon {
+      transform: rotate(180deg);
     }
 
     /* Chrome Extension Guide Area */
@@ -651,7 +690,7 @@
     <div class="hero-info">
       <div class="badge">AI Bookmark Intelligence</div>
       <h1>You save bookmarks to read later.<br>But you <em>never</em> visit them again.</h1>
-      <p>Stop hoarding links. Pull all your scattered bookmarks into one consolidated dashboard. AI will categorize your interests, map your research timeline, filter out stale links, and generate viral tweets to help you repurpose your saves.</p>
+      <p>Stop hoarding links. Pull all your X/Twitter bookmarks into a private, AI-powered search engine. Turn your saved tweets into organized, actionable knowledge instantly.</p>
     </div>
     
     <!-- Redesigned Login Card -->
@@ -720,34 +759,19 @@
       <p class="section-subtitle">Turn your unread X/Twitter bookmarks into an organized, searchable knowledge base.</p>
       <div class="features-grid">
         <div class="feature-card">
-          <div class="feature-icon">&#x1F504;</div>
-          <h4>Automatic Bookmark Sync</h4>
-          <p>Install the Chrome extension, visit your X bookmarks page, and sync everything in one click. No API keys required — the extension reads directly from your browser.</p>
+          <div class="feature-icon">⚡</div>
+          <h4>1-Click Sync</h4>
+          <p>Install the Chrome extension, visit your X bookmarks page, and sync in one click. No developer API keys required.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">&#x1F9E0;</div>
-          <h4>AI-Powered Categorization</h4>
-          <p>Claude AI analyzes every bookmark and automatically groups them by topic — tech, finance, design, health, and more. Find what you saved without scrolling endlessly.</p>
+          <div class="feature-icon">🧠</div>
+          <h4>AI Organizer</h4>
+          <p>Automatically categorize and group your bookmarked tweets by topic, theme, and utility without lifting a finger.</p>
         </div>
         <div class="feature-card">
-          <div class="feature-icon">&#x1F4CA;</div>
-          <h4>Research Timeline Tracker</h4>
-          <p>See your bookmarking patterns over time. Identify trending interests, stale saves you should revisit, and content clusters worth exploring deeper.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">&#x1F50D;</div>
-          <h4>Smart Search & Filters</h4>
-          <p>Search by keyword, author, topic, or date. Filter out noise and surface the exact bookmark you need in seconds instead of scrolling through hundreds.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">&#x270D;&#xFE0F;</div>
-          <h4>Draft & Repurpose Content</h4>
-          <p>Turn your best bookmarks into tweet threads, summaries, or LinkedIn posts. AI drafts content using your saved research as source material.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">&#x1F512;</div>
-          <h4>Private & Secure</h4>
-          <p>Your bookmarks sync directly to your personal database via encrypted HTTPS. No middleman servers, no data selling — you own your data completely.</p>
+          <div class="feature-icon">🔍</div>
+          <h4>Ask Your Brain</h4>
+          <p>Search your bookmarks using natural questions (e.g. <em>"What were those marketing tips I saved?"</em>) and get cited answers instantly.</p>
         </div>
       </div>
     </div>
@@ -761,31 +785,18 @@
       <div class="how-steps">
         <div class="how-step">
           <div class="how-num">1</div>
-          <div>
-            <h4>Create an Account</h4>
-            <p>Sign up with Google or email above. Your personal dashboard is created instantly with a private Cloud Firestore database for your bookmarks.</p>
-          </div>
+          <h4>Create Account</h4>
+          <p>Sign up in 10 seconds via Google or Email to generate your secure, private bookmarks workspace.</p>
         </div>
         <div class="how-step">
           <div class="how-num">2</div>
-          <div>
-            <h4>Install the Chrome Extension</h4>
-            <p>Add XBookmarkSync from the Chrome Web Store. The extension adds a floating sync button to your X bookmarks page — no configuration needed.</p>
-          </div>
+          <h4>Install Extension</h4>
+          <p>Add the XBookmarkSync helper extension to your Chrome browser in one click from the Web Store.</p>
         </div>
         <div class="how-step">
           <div class="how-num">3</div>
-          <div>
-            <h4>Sync Your Bookmarks</h4>
-            <p>Visit <a href="https://x.com/i/bookmarks" target="_blank" rel="noopener" style="color:var(--primary);font-weight:600;">x.com/i/bookmarks</a> and click the Sync button. The extension reads your bookmarks directly from the page and sends them to your dashboard.</p>
-          </div>
-        </div>
-        <div class="how-step">
-          <div class="how-num">4</div>
-          <div>
-            <h4>Explore Your AI Dashboard</h4>
-            <p>AI categorizes your bookmarks by topic, flags stale links, surfaces daily gems, and helps you draft content from your saved research. All from one unified dashboard.</p>
-          </div>
+          <h4>Sync & Search</h4>
+          <p>Go to <a href="https://x.com/i/bookmarks" target="_blank" rel="noopener" style="color:var(--primary);font-weight:600;text-decoration:underline;">x.com/i/bookmarks</a>, click <strong>Sync</strong>, and start querying your AI brain.</p>
         </div>
       </div>
     </div>
@@ -797,35 +808,91 @@
       <h2 class="section-title">Frequently Asked Questions</h2>
       <div style="margin-top: 32px;">
         <div class="faq-item">
-          <div class="faq-q">What is XBookmarkSync?</div>
+          <div class="faq-q">
+            <span>What is XBookmarkSync?</span>
+            <span class="faq-icon">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.5 4.5L6 8L9.5 4.5" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          </div>
           <div class="faq-a">XBookmarkSync is a Chrome extension and web dashboard that syncs your X (formerly Twitter) bookmarks into a private, AI-powered knowledge base. It automatically categorizes your saves by topic, tracks your research timeline, and helps you repurpose saved content into new posts.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q">How does XBookmarkSync use AI?</div>
+          <div class="faq-q">
+            <span>How does XBookmarkSync use AI?</span>
+            <span class="faq-icon">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.5 4.5L6 8L9.5 4.5" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          </div>
           <div class="faq-a">XBookmarkSync uses Claude AI by Anthropic to analyze and categorize your bookmarks. The AI reads each bookmark's text, identifies the topic and key themes, groups related saves together, and can draft new content (tweets, threads, summaries) using your bookmarks as source material.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q">Is my X/Twitter data private?</div>
+          <div class="faq-q">
+            <span>Is my X/Twitter data private?</span>
+            <span class="faq-icon">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.5 4.5L6 8L9.5 4.5" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          </div>
           <div class="faq-a">Yes. Your bookmarks are synced directly from your browser to your private Cloud Firestore database via encrypted HTTPS. There are no middleman servers. We do not sell, share, or access your data. You can delete all your data at any time from the dashboard settings.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q">Do I need a Twitter/X API developer account?</div>
+          <div class="faq-q">
+            <span>Do I need a Twitter/X API developer account?</span>
+            <span class="faq-icon">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.5 4.5L6 8L9.5 4.5" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          </div>
           <div class="faq-a">No. XBookmarkSync works by reading bookmarks directly from your browser page, so you don't need API keys, developer tokens, or any special X/Twitter account access. Just install the extension and sync.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q">Is XBookmarkSync free?</div>
+          <div class="faq-q">
+            <span>Is XBookmarkSync free?</span>
+            <span class="faq-icon">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.5 4.5L6 8L9.5 4.5" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          </div>
           <div class="faq-a">XBookmarkSync offers a free tier that includes bookmark syncing and basic dashboard access. AI-powered features like smart categorization, content drafting, and advanced analytics use AI credits. Premium plans are available for heavy users who need unlimited AI processing.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q">What browsers does XBookmarkSync support?</div>
+          <div class="faq-q">
+            <span>What browsers does XBookmarkSync support?</span>
+            <span class="faq-icon">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.5 4.5L6 8L9.5 4.5" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          </div>
           <div class="faq-a">XBookmarkSync currently supports Google Chrome via a Chrome Web Store extension. The web dashboard works in any modern browser. Support for Firefox and other Chromium-based browsers (Edge, Brave, Arc) is planned.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q">How many bookmarks can XBookmarkSync sync?</div>
+          <div class="faq-q">
+            <span>How many bookmarks can XBookmarkSync sync?</span>
+            <span class="faq-icon">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.5 4.5L6 8L9.5 4.5" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          </div>
           <div class="faq-a">There is no hard limit on the number of bookmarks you can sync. The extension scrolls through your X bookmarks page and captures everything visible. Users have successfully synced collections of over 5,000 bookmarks.</div>
         </div>
         <div class="faq-item">
-          <div class="faq-q">Can I export my bookmarks?</div>
+          <div class="faq-q">
+            <span>Can I export my bookmarks?</span>
+            <span class="faq-icon">
+              <svg width="12" height="12" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2.5 4.5L6 8L9.5 4.5" stroke="#86868b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+          </div>
           <div class="faq-a">Yes. XBookmarkSync lets you export your entire bookmark collection as an Excel spreadsheet from the dashboard, including the AI-generated categories and metadata.</div>
         </div>
       </div>
@@ -967,6 +1034,19 @@
   </script>
 
   <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.faq-item').forEach(item => {
+        const question = item.querySelector('.faq-q');
+        question.addEventListener('click', () => {
+          const isActive = item.classList.contains('active');
+          document.querySelectorAll('.faq-item').forEach(el => el.classList.remove('active'));
+          if (!isActive) {
+            item.classList.add('active');
+          }
+        });
+      });
+    });
+
     function switchAuthTab(type) {
       const tabLogin = document.getElementById('tabLogin');
       const tabSignup = document.getElementById('tabSignup');
