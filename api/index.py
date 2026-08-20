@@ -2650,6 +2650,11 @@ def settings_save():
                            profile=data, saved=True)
 
 
+@app.route("/favicon.ico")
+def favicon():
+    return send_file("../static/favicon.png", mimetype="image/png")
+
+
 @app.route("/debug")
 def debug():
     if not session.get("firebase_uid"):
