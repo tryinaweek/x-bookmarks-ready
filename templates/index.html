@@ -97,30 +97,35 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     
     :root {
-      --primary: #7c3aed;
-      --primary-hover: #6d28d9;
-      --accent: #1D9BF0;
-      --bg-dark: #0f172a;
-      --text-dark: #0f172a;
-      --text-muted: #4b5563;
-      --border: #e2e8f0;
-      --shadow-lg: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.05);
+      --primary: #18181b;
+      --primary-hover: #27272a;
+      --accent: #7c3aed;
+      --bg: #fcfcf9;
+      --text: #1a1a1a;
+      --text-muted: #52525b;
+      --border: #e4e4e0;
+      --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+      --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.02), 0 4px 6px -2px rgba(0, 0, 0, 0.02);
     }
 
     body {
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #fafafa;
-      color: var(--text-dark);
+      background: var(--bg);
+      color: var(--text);
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      overflow-x: hidden;
+      letter-spacing: -0.01em;
     }
 
     /* Header Nav */
     nav {
-      background: #ffffff;
+      background: rgba(252, 252, 249, 0.8);
+      backdrop-filter: blur(12px);
       border-bottom: 1px solid var(--border);
-      padding: 16px 40px;
+      padding: 14px 40px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -131,104 +136,374 @@
     .nav-brand {
       display: flex;
       align-items: center;
-      gap: 12px;
+      gap: 10px;
       text-decoration: none;
-      color: #0f172a;
-      font-weight: 800;
-      font-size: 20px;
-      letter-spacing: -0.5px;
+      color: var(--text);
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: -0.02em;
     }
     .nav-logo {
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .nav-link-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+    .nav-link-btn:hover {
+      color: var(--text);
+    }
+    .btn-login-nav {
+      background: var(--primary);
+      color: #ffffff;
+      padding: 8px 16px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: 1px solid var(--primary);
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-login-nav:hover {
+      background: var(--primary-hover);
+      border-color: var(--primary-hover);
     }
 
     /* Warning setup block */
     .setup-banner {
-      background: #fffbeb;
+      background: #fef08a;
       border: 1px solid #fef3c7;
       border-radius: 8px;
       padding: 12px 20px;
       max-width: 900px;
       margin: 24px auto 0 auto;
       font-size: 13px;
-      color: #b45309;
+      color: #713f12;
       line-height: 1.5;
       text-align: center;
     }
     .setup-banner strong {
-      color: #92400e;
+      color: #713f12;
     }
 
     /* Hero section */
-    .hero-container {
-      max-width: 1200px;
-      margin: 40px auto;
-      padding: 0 40px;
-      display: grid;
-      grid-template-columns: 1.1fr 0.9fr;
-      gap: 60px;
+    .hero-section {
+      padding: 80px 24px 60px 24px;
+      display: flex;
+      flex-direction: column;
       align-items: center;
+      text-align: center;
+      max-width: 800px;
+      margin: 0 auto;
+      gap: 28px;
     }
-    @media (max-width: 968px) {
-      .hero-container {
-        grid-template-columns: 1fr;
-        text-align: center;
-        gap: 40px;
-      }
+    .badge-live {
+      background: #f4f4f5;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 100px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      background: #10b981;
+      border-radius: 50%;
+    }
+    .hero-section h1 {
+      font-size: 48px;
+      font-weight: 800;
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+      color: var(--text);
+    }
+    .hero-section p {
+      font-size: 17px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      max-width: 620px;
     }
 
-    .hero-info {
+    /* Centered Email Form */
+    .hero-email-form {
+      display: flex;
+      gap: 8px;
+      width: 100%;
+      max-width: 480px;
+      background: #ffffff;
+      padding: 6px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      box-shadow: var(--shadow-sm);
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .hero-email-form:focus-within {
+      border-color: #a1a1aa;
+      box-shadow: 0 0 0 3px rgba(24, 24, 27, 0.05);
+    }
+    .hero-email-form input {
+      flex: 1;
+      border: none;
+      outline: none;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: inherit;
+      color: var(--text);
+    }
+    .hero-email-form input::placeholder {
+      color: #a1a1aa;
+    }
+    .hero-email-form button {
+      background: var(--primary);
+      color: #ffffff;
+      border: none;
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 600;
+      border-radius: 6px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+    .hero-email-form button:hover {
+      background: var(--primary-hover);
+    }
+
+    /* Mock App Preview Dashboard */
+    .mock-app-preview {
+      width: 100%;
+      max-width: 880px;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      box-shadow: var(--shadow-lg);
+      margin: 40px auto 80px auto;
+      overflow: hidden;
+      display: grid;
+      grid-template-columns: 200px 1fr;
+      height: 440px;
+      text-align: left;
+    }
+    @media (max-width: 768px) {
+      .mock-app-preview {
+        grid-template-columns: 1fr;
+        height: auto;
+      }
+      .mock-sidebar { display: none; }
+    }
+    .mock-sidebar {
+      background: #fbfbf9;
+      border-right: 1px solid var(--border);
+      padding: 20px;
       display: flex;
       flex-direction: column;
       gap: 20px;
     }
-    .badge {
-      align-self: flex-start;
-      background: #f3e8ff;
-      color: var(--primary);
+    .mock-sidebar-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
       font-size: 12px;
       font-weight: 700;
+      color: var(--text);
       text-transform: uppercase;
-      letter-spacing: 0.8px;
-      padding: 6px 16px;
-      border-radius: 30px;
+      letter-spacing: 0.05em;
     }
-    @media (max-width: 968px) {
-      .badge { align-self: center; }
+    .mock-sidebar-menu {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
     }
-    
-    .hero-info h1 {
-      font-size: 44px;
-      font-weight: 800;
-      line-height: 1.15;
-      letter-spacing: -1.2px;
-      color: #0f172a;
-    }
-    .hero-info h1 em {
-      font-style: normal;
-      background: linear-gradient(135deg, var(--primary), var(--accent));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-    }
-    .hero-info p {
-      font-size: 17px;
-      line-height: 1.6;
+    .mock-menu-item {
+      padding: 8px 12px;
+      font-size: 13px;
       color: var(--text-muted);
-      max-width: 580px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .mock-menu-item.active {
+      background: #f4f4f0;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .mock-content {
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      background: #ffffff;
+      overflow-y: auto;
+    }
+    .mock-chat-area {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      min-height: 280px;
+    }
+    .mock-bubble {
+      max-width: 80%;
+      padding: 12px 16px;
+      border-radius: 12px;
+      font-size: 13.5px;
+      line-height: 1.5;
+      animation: fadeInSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    }
+    @keyframes fadeInSlide {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .mock-bubble.user {
+      align-self: flex-end;
+      background: #f4f4f0;
+      color: var(--text);
+      border-bottom-right-radius: 2px;
+    }
+    .mock-bubble.ai {
+      align-self: flex-start;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-bottom-left-radius: 2px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      width: 100%;
+    }
+    .mock-ai-header {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .mock-result-card {
+      border: 1px solid #e4e4e0;
+      background: #fafaf9;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 4px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .mock-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .mock-card-author {
+      font-weight: 600;
+      font-size: 12.5px;
+      color: var(--text);
+    }
+    .mock-card-tag {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 6px;
+      background: #e4e4e0;
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+    .mock-card-snippet {
+      font-size: 12.5px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .mock-console-input-bar {
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 13.5px;
+      color: var(--text-muted);
+    }
+    .mock-console-prompt {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .mock-console-input {
+      color: var(--text);
+      border-right: 2px solid var(--text);
+      padding-right: 2px;
+      animation: blink 0.8s infinite;
+    }
+    @keyframes blink {
+      0%, 100% { border-color: transparent }
+      50% { border-color: var(--text) }
     }
 
-    /* Auth card redesign - Decent size, thick inputs */
-    .auth-card {
+    /* Modal Styles */
+    .auth-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: rgba(9, 9, 11, 0.4);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .auth-modal.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .auth-modal-content {
       background: #ffffff;
       border: 1px solid var(--border);
       border-radius: 16px;
-      padding: 36px;
-      box-shadow: var(--shadow-lg);
       width: 100%;
-      max-width: 450px;
-      margin: 0 auto;
+      max-width: 440px;
+      position: relative;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.05);
+      transform: scale(0.95);
+      transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     }
+    .auth-modal.active .auth-modal-content {
+      transform: scale(1);
+    }
+    .auth-modal-close {
+      position: absolute;
+      top: 16px; right: 16px;
+      background: none; border: none;
+      font-size: 18px; color: var(--text-muted);
+      cursor: pointer;
+      width: 28px; height: 28px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%;
+      transition: background 0.15s;
+    }
+    .auth-modal-close:hover {
+      background: #f4f4f5;
+      color: var(--text);
+    }
+
+    /* Forms in Modal */
     .auth-header {
       text-align: center;
       margin-bottom: 24px;
@@ -237,44 +512,43 @@
       width: 100%;
       background: #ffffff;
       border: 1px solid var(--border);
-      color: #374151;
+      color: var(--text);
       padding: 12px 16px;
       border-radius: 8px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
       cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
+      transition: background 0.15s, border-color 0.15s;
     }
     .google-btn:hover {
       background: #f9fafb;
       border-color: #cbd5e1;
     }
-    
     .separator {
       display: flex;
       align-items: center;
       text-align: center;
       margin: 20px 0;
-      color: #9ca3af;
-      font-size: 12px;
+      color: #a1a1aa;
+      font-size: 11px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.05em;
     }
     .separator::before, .separator::after {
       content: '';
       flex: 1;
-      border-bottom: 1px solid #f3f4f6;
+      border-bottom: 1px solid #f4f4f5;
     }
-    .separator:not(:empty)::before { margin-right: .5em; }
-    .separator:not(:empty)::after { margin-left: .5em; }
-
+    .separator:not(:empty)::before { margin-right: .8em; }
+    .separator:not(:empty)::after { margin-left: .8em; }
+    
     .auth-tabs {
       display: flex;
-      border-bottom: 1px solid #f1f5f9;
+      border-bottom: 1px solid #f4f4f5;
       margin-bottom: 24px;
     }
     .auth-tab {
@@ -282,60 +556,57 @@
       padding: 10px;
       background: none;
       border: none;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       border-bottom: 2px solid transparent;
-      color: #64748b;
+      color: var(--text-muted);
       outline: none;
     }
     .auth-tab.active {
       border-bottom-color: var(--primary);
-      color: var(--primary);
+      color: var(--text);
     }
-
     .form-group {
       margin-bottom: 18px;
       display: flex;
       flex-direction: column;
       gap: 6px;
+      text-align: left;
     }
     .form-group label {
       font-size: 11px;
       font-weight: 700;
-      color: #475569;
+      color: var(--text-muted);
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.05em;
     }
-    /* Expanded input boxes for premium feel */
     .form-group input {
       width: 100%;
-      padding: 13px 16px;
+      padding: 12px 14px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
       outline: none;
-      font-size: 15px;
+      font-size: 14px;
       font-family: inherit;
-      color: #0f172a;
-      background: #f8fafc;
-      transition: all 0.2s ease;
+      color: var(--text);
+      background: #fafaf9;
+      transition: border-color 0.15s, background 0.15s;
     }
     .form-group input:focus {
       border-color: var(--primary);
       background: #ffffff;
-      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.12);
     }
     .forgot-link {
       align-self: flex-end;
       font-size: 12px;
-      color: var(--primary);
+      color: var(--accent);
       text-decoration: none;
       font-weight: 500;
     }
     .forgot-link:hover {
       text-decoration: underline;
     }
-
     .btn-submit {
       width: 100%;
       background: var(--primary);
@@ -343,21 +614,20 @@
       border: none;
       border-radius: 8px;
       padding: 14px;
-      font-size: 15px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s;
+      transition: background 0.15s;
     }
     .btn-submit:hover {
       background: var(--primary-hover);
     }
-    
     .auth-error {
       margin-top: 14px;
-      color: #e0245e;
+      color: #e11d48;
       font-size: 13px;
       text-align: center;
       background: #fff1f2;
@@ -367,71 +637,85 @@
       display: none;
     }
 
-    /* Features section */
+    /* Value Pillars Section */
     .features-section {
-      background: #ffffff;
+      background: #fbfbf9;
       border-top: 1px solid var(--border);
-      padding: 80px 40px;
+      border-bottom: 1px solid var(--border);
+      padding: 80px 24px;
     }
     .features-inner {
       max-width: 1000px;
       margin: 0 auto;
+      text-align: center;
+    }
+    .section-title {
+      font-size: 28px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      margin-bottom: 10px;
+      color: var(--text);
+    }
+    .section-subtitle {
+      font-size: 16px;
+      color: var(--text-muted);
+      max-width: 580px;
+      margin: 0 auto 48px auto;
+      line-height: 1.5;
     }
     .features-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 32px;
-      margin-top: 48px;
     }
     @media (max-width: 868px) {
       .features-grid { grid-template-columns: 1fr; gap: 24px; }
     }
     .feature-card {
       background: #ffffff;
-      border: 1px solid rgba(0, 0, 0, 0.08);
-      border-radius: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
       padding: 32px;
-      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      text-align: left;
+      transition: transform 0.2s, box-shadow 0.2s;
     }
     .feature-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.04);
-      border-color: rgba(0, 0, 0, 0.15);
-    }
-    .feature-card h4 {
-      font-size: 17px;
-      font-weight: 600;
-      margin-bottom: 10px;
-      color: #1d1d1f;
-      letter-spacing: -0.2px;
-    }
-    .feature-card p {
-      font-size: 14px;
-      color: #86868b;
-      line-height: 1.6;
+      transform: translateY(-2px);
+      box-shadow: var(--shadow-md);
     }
     .feature-icon {
-      width: 44px;
-      height: 44px;
-      border-radius: 12px;
-      background: #f5f5f7;
+      width: 40px;
+      height: 40px;
+      border-radius: 8px;
+      background: #f4f4f0;
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 20px;
-      font-size: 20px;
-      color: #1d1d1f;
+      font-size: 18px;
+      color: var(--text);
+    }
+    .feature-card h4 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: var(--text);
+    }
+    .feature-card p {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.6;
     }
 
     /* How it works */
     .how-section {
-      background: #f5f5f7;
-      border-top: 1px solid var(--border);
-      padding: 80px 40px;
+      background: #ffffff;
+      padding: 80px 24px;
     }
     .how-inner {
       max-width: 1000px;
       margin: 0 auto;
+      text-align: center;
     }
     .how-steps {
       margin-top: 48px;
@@ -440,7 +724,7 @@
       gap: 32px;
     }
     @media (max-width: 868px) {
-      .how-steps { grid-template-columns: 1fr; gap: 28px; }
+      .how-steps { grid-template-columns: 1fr; gap: 24px; }
     }
     .how-step {
       display: flex;
@@ -448,82 +732,90 @@
       gap: 16px;
       align-items: flex-start;
       background: #ffffff;
-      border: 1px solid rgba(0, 0, 0, 0.05);
-      border-radius: 16px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
       padding: 32px;
+      text-align: left;
     }
     .how-num {
-      width: 36px;
-      height: 36px;
-      min-width: 36px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
-      background: #1d1d1f;
+      background: var(--primary);
       color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 15px;
+      font-size: 13px;
       font-weight: 600;
     }
     .how-step h4 {
-      font-size: 17px;
-      font-weight: 600;
-      color: #1d1d1f;
-      margin-bottom: 6px;
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
     }
     .how-step p {
-      font-size: 14px;
-      color: #86868b;
+      font-size: 13.5px;
+      color: var(--text-muted);
       line-height: 1.6;
     }
 
     /* FAQ section */
     .faq-section {
-      background: #ffffff;
+      background: #fbfbf9;
       border-top: 1px solid var(--border);
-      padding: 80px 40px;
+      padding: 80px 24px;
     }
     .faq-inner {
-      max-width: 760px;
+      max-width: 680px;
       margin: 0 auto;
+      text-align: center;
+    }
+    .faq-list {
+      margin-top: 48px;
+      text-align: left;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
     }
     .faq-item {
-      border-bottom: 1px solid #d2d2d7;
-      padding: 8px 0;
+      background: #ffffff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px 20px;
+      transition: border-color 0.15s;
     }
-    .faq-item:last-child { border-bottom: none; }
     .faq-q {
-      font-size: 17px;
+      font-size: 14.5px;
       font-weight: 600;
-      color: #1d1d1f;
+      color: var(--text);
       cursor: pointer;
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 24px 0;
+      justify-content: space-between;
       user-select: none;
     }
+    .faq-chevron {
+      transition: transform 0.2s ease;
+      color: var(--text-muted);
+    }
     .faq-a {
-      font-size: 15px;
-      color: #86868b;
+      font-size: 13.5px;
+      color: var(--text-muted);
       line-height: 1.6;
+      margin-top: 0;
       max-height: 0;
-      opacity: 0;
       overflow: hidden;
-      padding-bottom: 0;
-      transition: max-height 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, padding-bottom 0.3s ease;
+      transition: max-height 0.2s ease-out, margin-top 0.2s ease-out;
+    }
+    .faq-item.active {
+      border-color: #a1a1aa;
+    }
+    .faq-item.active .faq-chevron {
+      transform: rotate(180deg);
     }
     .faq-item.active .faq-a {
-      max-height: 250px;
-      opacity: 1;
-      padding-bottom: 24px;
-    }
-    .faq-icon {
-      display: inline-flex;
-      transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .faq-item.active .faq-icon {
-      transform: rotate(180deg);
+      margin-top: 12px;
     }
 
     /* Chrome Extension Guide Area */
@@ -531,39 +823,25 @@
       background: #ffffff;
       border-top: 1px solid var(--border);
       border-bottom: 1px solid var(--border);
-      padding: 60px 40px;
+      padding: 80px 24px;
     }
     .ext-guide-inner {
-      max-width: 900px;
+      max-width: 1000px;
       margin: 0 auto;
-    }
-    .section-title {
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-      margin-bottom: 10px;
       text-align: center;
-    }
-    .section-subtitle {
-      font-size: 15px;
-      color: var(--text-muted);
-      margin-bottom: 36px;
-      text-align: center;
-      max-width: 500px;
-      margin-left: auto;
-      margin-right: auto;
     }
     .download-card {
-      background: #faf5ff;
-      border: 1px solid #ebd5ff;
+      background: #ffffff;
+      border: 1px solid var(--border);
       border-radius: 12px;
-      padding: 24px;
+      padding: 32px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 20px;
-      margin-bottom: 30px;
+      margin-bottom: 32px;
       flex-wrap: wrap;
+      text-align: left;
     }
     .download-desc {
       flex: 1;
@@ -573,11 +851,11 @@
       font-size: 16px;
       font-weight: 700;
       margin-bottom: 6px;
-      color: #581c87;
+      color: var(--text);
     }
     .download-desc p {
-      font-size: 13px;
-      color: #6b21a8;
+      font-size: 13.5px;
+      color: var(--text-muted);
       margin-bottom: 0;
     }
     .download-btn {
@@ -589,18 +867,17 @@
       text-decoration: none;
       padding: 12px 20px;
       border-radius: 8px;
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: 600;
-      transition: background 0.2s;
+      transition: background 0.15s;
     }
     .download-btn:hover {
       background: var(--primary-hover);
     }
-    
     .steps-grid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
+      gap: 24px;
     }
     @media (max-width: 768px) {
       .steps-grid {
@@ -608,55 +885,57 @@
       }
     }
     .step-card {
-      background: #f8fafc;
+      background: #fafaf9;
       border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 20px;
-      position: relative;
+      border-radius: 12px;
+      padding: 24px;
+      text-align: left;
     }
     .step-badge {
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: var(--primary);
       color: #ffffff;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 13px;
+      font-size: 11px;
       font-weight: 700;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
     .step-card h5 {
-      font-size: 14px;
+      font-size: 14.5px;
       font-weight: 700;
       margin-bottom: 6px;
+      color: var(--text);
     }
     .step-card p {
-      font-size: 12px;
+      font-size: 13px;
       color: var(--text-muted);
       line-height: 1.5;
       margin-bottom: 0;
     }
-    
+
+    /* Footer */
     footer {
       background: #ffffff;
       text-align: center;
-      padding: 30px 24px;
+      padding: 40px 24px;
       border-top: 1px solid var(--border);
       font-size: 13px;
-      color: #94a3b8;
+      color: var(--text-muted);
       margin-top: auto;
     }
     footer a {
-      color: #64748b;
+      color: var(--text-muted);
       text-decoration: none;
       margin-left: 8px;
       border-bottom: 1px solid transparent;
     }
     footer a:hover {
-      color: var(--primary);
-      border-bottom-color: var(--primary);
+      color: var(--text);
+      border-bottom-color: var(--text);
     }
   </style>
 </head>
@@ -677,101 +956,86 @@
       </svg>
       <span>XBookmarkSync</span>
     </a>
+    <div class="nav-links">
+      <button class="nav-link-btn" onclick="openAuthModal('login')">Log In</button>
+      <button class="btn-login-nav" onclick="openAuthModal('signup')">Sign Up Free</button>
+    </div>
   </nav>
 
   {% if error %}
-  <div class="setup-banner" style="background: #fff1f2; border: 1px solid #ffe4e6; color: #e0245e; font-weight: 500; border-radius: 8px; padding: 12px 20px; max-width: 900px; margin: 24px auto 0 auto; text-align: center; font-size: 13px; line-height: 1.5;">
+  <div class="setup-banner">
     ⚠️ <strong>Authentication Error</strong>: {{ error }}
   </div>
   {% endif %}
 
-  <!-- Hero Content Grid -->
-  <div class="hero-container">
-    <div class="hero-info">
-      <div class="badge">AI Bookmark Intelligence</div>
-      <h1>You save bookmarks to read later.<br>But you <em>never</em> visit them again.</h1>
-      <p>Stop hoarding links. Pull all your X/Twitter bookmarks into a private, AI-powered search engine. Turn your saved tweets into organized, actionable knowledge instantly.</p>
+  <!-- Centered Hero Section -->
+  <section class="hero-section">
+    <div class="badge-live">
+      <span class="badge-dot"></span>
+      AI Bookmark Assistant
     </div>
+    <h1>Your second brain for X/Twitter bookmarks.</h1>
+    <p>Stop hoarding links. Pull all your X/Twitter bookmarks into a private, AI-powered search engine. Turn your saved tweets into organized, actionable knowledge instantly.</p>
     
-    <!-- Redesigned Login Card -->
-    <div class="auth-card" id="authBox">
-      <div class="auth-header">
-        <!-- Google login -->
-        <button class="google-btn" onclick="handleGoogleLogin()">
-          <svg width="18" height="18" viewBox="0 0 18 18">
-            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.844 2.078-1.797 2.717v2.258h2.91c1.702-1.567 2.683-3.874 2.683-6.615z" fill="#4285F4"/>
-            <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.91-2.258c-.806.54-1.837.86-3.046.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
-            <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.96H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.04l3.007-2.333z" fill="#FBBC05"/>
-            <path d="M9 3.58c1.32 0 2.505.453 3.44 1.345l2.582-2.58C13.463.89 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+    <form class="hero-email-form" onsubmit="handleHeroSubmit(event)">
+      <input type="email" id="heroEmailInput" placeholder="Enter your email address..." required>
+      <button type="submit">Start Free Sync &rarr;</button>
+    </form>
+
+    <!-- Simulated Interactive App Preview -->
+    <div class="mock-app-preview">
+      <div class="mock-sidebar">
+        <div class="mock-sidebar-header">
+          <svg viewBox="0 0 24 24" fill="none" style="width: 14px; height: 14px;">
+            <path d="M9 3h6a2 2 0 0 1 2 2v14l-5-3.5-5 3.5V5a2 2 0 0 1 2-2z" fill="#18181b" />
+            <path d="M10 8.5l4 4M14 8.5l-4 4" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
           </svg>
-          Continue with Google
-        </button>
-      </div>
-
-      <div class="separator">or</div>
-
-      <div class="auth-tabs">
-        <button class="auth-tab active" onclick="switchAuthTab('login')" id="tabLogin">Log In</button>
-        <button class="auth-tab" onclick="switchAuthTab('signup')" id="tabSignup">Sign Up</button>
-      </div>
-
-      <!-- Log In -->
-      <form id="loginForm" onsubmit="handleLoginSubmit(event)" autocomplete="on">
-        <div class="form-group">
-          <label for="loginEmail">Email</label>
-          <input type="email" id="loginEmail" name="email" autocomplete="username" placeholder="you@example.com" required>
+          <span>Library</span>
         </div>
-        <div class="form-group">
-          <div style="display: flex; justify-content: space-between; width: 100%;">
-            <label for="loginPassword">Password</label>
-            <a href="#" onclick="handleForgotPassword(event)" class="forgot-link">Forgot password?</a>
+        <div class="mock-sidebar-menu">
+          <div class="mock-menu-item active">📚 All Bookmarks</div>
+          <div class="mock-menu-item">💬 Ask Your Brain</div>
+          <div class="mock-menu-item">✍️ AI Idea Engine</div>
+          <div class="mock-menu-item">⚙️ Settings</div>
+        </div>
+      </div>
+      <div class="mock-content">
+        <div class="mock-chat-area" id="simulatedChatArea">
+          <!-- Placeholder state -->
+          <div style="margin: auto; text-align: center; color: var(--text-muted); font-size: 13px; max-width: 320px; display: flex; flex-direction: column; gap: 8px;" id="simulatedPlaceholder">
+            <div>💡</div>
+            <div>Typing search query below...</div>
           </div>
-          <input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="••••••••" required>
         </div>
-        <button type="submit" class="btn-submit">Log In</button>
-      </form>
-
-      <!-- Sign Up -->
-      <form id="signupForm" onsubmit="handleSignupSubmit(event)" autocomplete="on" style="display: none;">
-        <div class="form-group">
-          <label for="signupName">Full Name</label>
-          <input type="text" id="signupName" name="name" autocomplete="name" placeholder="Alex Johnson" required>
+        <div class="mock-console-input-bar">
+          <span class="mock-console-prompt">Ask your brain:</span>
+          <span class="mock-console-input" id="simulatedQueryInput"></span>
         </div>
-        <div class="form-group">
-          <label for="signupEmail">Email</label>
-          <input type="email" id="signupEmail" name="email" autocomplete="username" placeholder="you@example.com" required>
-        </div>
-        <div class="form-group">
-          <label for="signupPassword">Password</label>
-          <input type="password" id="signupPassword" name="password" autocomplete="new-password" placeholder="••••••••" required>
-        </div>
-        <button type="submit" class="btn-submit">Create Account</button>
-      </form>
-
-      <div id="authError" class="auth-error"></div>
+      </div>
     </div>
-  </div>
+  </section>
 
-  <!-- Features Section -->
+  <!-- Value Pillars Section -->
   <section class="features-section">
     <div class="features-inner">
       <h2 class="section-title">What XBookmarkSync Does</h2>
       <p class="section-subtitle">Turn your unread X/Twitter bookmarks into an organized, searchable knowledge base.</p>
+      
       <div class="features-grid">
         <div class="feature-card">
           <div class="feature-icon">⚡</div>
           <h4>1-Click Sync</h4>
-          <p>Install the Chrome extension, visit your X bookmarks page, and sync in one click. No developer API keys required.</p>
-        </div>
-        <div class="feature-card">
-          <div class="feature-icon">🧠</div>
-          <h4>AI Organizer</h4>
-          <p>Automatically categorize and group your bookmarked tweets by topic, theme, and utility without lifting a finger.</p>
+          <p>Sync all your bookmarks in under 10 seconds via our secure, lightweight Chrome extension. No developer API keys required.</p>
         </div>
         <div class="feature-card">
           <div class="feature-icon">🔍</div>
-          <h4>Ask Your Brain</h4>
-          <p>Search your bookmarks using natural questions (e.g. <em>"What were those marketing tips I saved?"</em>) and get cited answers instantly.</p>
+          <h4>Semantic AI Search</h4>
+          <p>Ask natural questions like "where is that Figma layout thread?" and find the exact post instantly, even if you don't remember the author or keywords.</p>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">💡</div>
+          <h4>AI Organizer & Digest</h4>
+          <p>AI automatically categorizes, tags, and summarizes your saves. Easily compile key insights and draft content directly from your knowledge base.</p>
         </div>
       </div>
     </div>
@@ -780,29 +1044,28 @@
   <!-- How It Works Section -->
   <section class="how-section">
     <div class="how-inner">
-      <h2 class="section-title">How It Works</h2>
-      <p class="section-subtitle">Get set up in under 2 minutes. No API tokens or developer accounts needed.</p>
+      <h2 class="section-title">Getting Started</h2>
+      <p class="section-subtitle">Three simple steps to unlock your bookmarked knowledge.</p>
+      
       <div class="how-steps">
         <div class="how-step">
           <div class="how-num">1</div>
           <h4>Create Account</h4>
-          <p>Sign up in 10 seconds via Google or Email to generate your secure, private bookmarks workspace.</p>
+          <p>Sign up in seconds. You'll get your private, secure workspace instantly.</p>
         </div>
         <div class="how-step">
           <div class="how-num">2</div>
           <h4>Install Extension</h4>
-          <p>Add the XBookmarkSync helper extension to your Chrome browser in one click from the Web Store.</p>
+          <p>Add the helper extension to your browser with a single click from the Chrome Web Store.</p>
         </div>
         <div class="how-step">
           <div class="how-num">3</div>
-          <h4>Sync & Search</h4>
-          <p>Go to <a href="https://x.com/i/bookmarks" target="_blank" rel="noopener" style="color:var(--primary);font-weight:600;text-decoration:underline;">x.com/i/bookmarks</a>, click <strong>Sync</strong>, and start querying your AI brain.</p>
+          <h4>Sync & Ask</h4>
+          <p>Navigate to your bookmarks on X, click sync, and start searching your saved brain.</p>
         </div>
       </div>
     </div>
   </section>
-
-  <!-- FAQ Section -->
   <section class="faq-section">
     <div class="faq-inner">
       <h2 class="section-title">Frequently Asked Questions</h2>
@@ -1011,6 +1274,67 @@
       </div>
     </div>
   </section>
+  <!-- Auth Modal (Google & Email Login/Signup) -->
+  <div class="auth-modal" id="authModal" onclick="if(event.target === this) closeAuthModal()">
+    <div class="auth-modal-content">
+      <button class="auth-modal-close" onclick="closeAuthModal()">&times;</button>
+      
+      <div class="auth-header">
+        <!-- Google login -->
+        <button class="google-btn" onclick="handleGoogleLogin()">
+          <svg width="18" height="18" viewBox="0 0 18 18">
+            <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.844 2.078-1.797 2.717v2.258h2.91c1.702-1.567 2.683-3.874 2.683-6.615z" fill="#4285F4"/>
+            <path d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.91-2.258c-.806.54-1.837.86-3.046.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18z" fill="#34A853"/>
+            <path d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.96H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.04l3.007-2.333z" fill="#FBBC05"/>
+            <path d="M9 3.58c1.32 0 2.505.453 3.44 1.345l2.582-2.58C13.463.89 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.961L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z" fill="#EA4335"/>
+          </svg>
+          Continue with Google
+        </button>
+      </div>
+
+      <div class="separator">or</div>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" onclick="switchAuthTab('login')" id="tabLogin">Log In</button>
+        <button class="auth-tab" onclick="switchAuthTab('signup')" id="tabSignup">Sign Up</button>
+      </div>
+
+      <!-- Log In -->
+      <form id="loginForm" onsubmit="handleLoginSubmit(event)" autocomplete="on">
+        <div class="form-group">
+          <label for="loginEmail">Email</label>
+          <input type="email" id="loginEmail" name="email" autocomplete="username" placeholder="you@example.com" required>
+        </div>
+        <div class="form-group">
+          <div style="display: flex; justify-content: space-between; width: 100%;">
+            <label for="loginPassword">Password</label>
+            <a href="#" onclick="handleForgotPassword(event)" class="forgot-link">Forgot password?</a>
+          </div>
+          <input type="password" id="loginPassword" name="password" autocomplete="current-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn-submit">Log In</button>
+      </form>
+
+      <!-- Sign Up -->
+      <form id="signupForm" onsubmit="handleSignupSubmit(event)" autocomplete="on" style="display: none;">
+        <div class="form-group">
+          <label for="signupName">Full Name</label>
+          <input type="text" id="signupName" name="name" autocomplete="name" placeholder="Alex Johnson" required>
+        </div>
+        <div class="form-group">
+          <label for="signupEmail">Email</label>
+          <input type="email" id="signupEmail" name="email" autocomplete="username" placeholder="you@example.com" required>
+        </div>
+        <div class="form-group">
+          <label for="signupPassword">Password</label>
+          <input type="password" id="signupPassword" name="password" autocomplete="new-password" placeholder="••••••••" required>
+        </div>
+        <button type="submit" class="btn-submit">Create Account</button>
+      </form>
+
+      <div id="authError" class="auth-error"></div>
+    </div>
+  </div>
 
   <!-- Footer -->
   <footer>
@@ -1182,6 +1506,149 @@
         showError("Connection error: " + err);
       });
     }
+
+    // Modal controls
+    function openAuthModal(type = 'login', initialEmail = '') {
+      const modal = document.getElementById('authModal');
+      modal.classList.add('active');
+      switchAuthTab(type);
+      if (initialEmail) {
+        document.getElementById('signupEmail').value = initialEmail;
+        document.getElementById('loginEmail').value = initialEmail;
+      }
+    }
+    function closeAuthModal() {
+      const modal = document.getElementById('authModal');
+      modal.classList.remove('active');
+    }
+    function handleHeroSubmit(event) {
+      event.preventDefault();
+      const email = document.getElementById('heroEmailInput').value.trim();
+      if (email) {
+        openAuthModal('signup', email);
+      }
+    }
+
+    // Simulated interactive app typing dashboard
+    const phrases = [
+      "where is the rust concurrency tutorial?",
+      "find the thread about vercel serverless limits",
+      "search for Figma design tokens",
+      "what was the marketing strategy of Stripe?"
+    ];
+    
+    const results = {
+      "where is the rust concurrency tutorial?": {
+        author: "@rust_lang",
+        date: "April 4",
+        tag: "Rust",
+        snippet: "Rust Concurrency Masterclass: From basic threads to atomics and thread-safe lock structures. Here is the link..."
+      },
+      "find the thread about vercel serverless limits": {
+        author: "@vercel",
+        date: "July 14",
+        tag: "Serverless",
+        snippet: "Vercel serverless function limits: Config size is capped at 50MB. Exclude assets in .vercelignore to reduce bundle sizes."
+      },
+      "search for Figma design tokens": {
+        author: "@design_system",
+        date: "June 12",
+        tag: "Design",
+        snippet: "Figma design tokens guide: How to export variables directly to Tailwind or CSS custom variables in one click."
+      },
+      "what was the marketing strategy of Stripe?": {
+        author: "@patio11",
+        date: "May 2",
+        tag: "Business",
+        snippet: "Stripe's developer-first strategy: Focus on great API documentation, simple integrations, and high-quality onboarding tools."
+      }
+    };
+
+    let phraseIndex = 0;
+    let charIndex = 0;
+    let isDeleting = false;
+
+    function typeSimulatedSearch() {
+      const inputEl = document.getElementById('simulatedQueryInput');
+      const chatArea = document.getElementById('simulatedChatArea');
+      if (!inputEl || !chatArea) return;
+      
+      const currentPhrase = phrases[phraseIndex];
+      
+      if (isDeleting) {
+        inputEl.textContent = currentPhrase.substring(0, charIndex - 1);
+        charIndex--;
+      } else {
+        inputEl.textContent = currentPhrase.substring(0, charIndex + 1);
+        charIndex++;
+      }
+      
+      let typingSpeed = isDeleting ? 30 : 60;
+      
+      if (!isDeleting && charIndex === currentPhrase.length) {
+        typingSpeed = 1000;
+        setTimeout(() => {
+          renderSimulatedResult(currentPhrase);
+        }, 300);
+        return;
+      } else if (isDeleting && charIndex === 0) {
+        isDeleting = false;
+        phraseIndex = (phraseIndex + 1) % phrases.length;
+        typingSpeed = 500;
+      }
+      
+      setTimeout(typeSimulatedSearch, typingSpeed);
+    }
+
+    function renderSimulatedResult(query) {
+      const chatArea = document.getElementById('simulatedChatArea');
+      const inputEl = document.getElementById('simulatedQueryInput');
+      if (!chatArea || !inputEl) return;
+      
+      // Clear placeholder or old bubbles
+      chatArea.innerHTML = '';
+      
+      // 1. User Bubble
+      const userBubble = document.createElement('div');
+      userBubble.className = 'mock-bubble user';
+      userBubble.textContent = query;
+      chatArea.appendChild(userBubble);
+      
+      // 2. AI Bubble typing state
+      const aiBubble = document.createElement('div');
+      aiBubble.className = 'mock-bubble ai';
+      aiBubble.innerHTML = `<span class="mock-ai-header">AI Q&A</span><div>Searching your bookmarks...</div>`;
+      chatArea.appendChild(aiBubble);
+      chatArea.scrollTop = chatArea.scrollHeight;
+      
+      setTimeout(() => {
+        // Replace typing state with actual result
+        const res = results[query];
+        aiBubble.innerHTML = `
+          <span class="mock-ai-header">AI Q&A</span>
+          <div>Found in your synced bookmarks:</div>
+          <div class="mock-result-card">
+            <div class="mock-card-header">
+              <span class="mock-card-author">${res.author} (${res.date})</span>
+              <span class="mock-card-tag">${res.tag}</span>
+            </div>
+            <div class="mock-card-snippet">${res.snippet}</div>
+          </div>
+        `;
+        chatArea.scrollTop = chatArea.scrollHeight;
+        
+        // Wait 4 seconds, delete query and start next search
+        setTimeout(() => {
+          isDeleting = true;
+          typeSimulatedSearch();
+        }, 4000);
+      }, 800);
+    }
+
+    // Start simulation
+    document.addEventListener('DOMContentLoaded', () => {
+      setTimeout(typeSimulatedSearch, 1000);
+    });
   </script>
 
 </body>
