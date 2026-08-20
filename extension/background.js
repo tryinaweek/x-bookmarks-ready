@@ -1,4 +1,4 @@
-// Service worker for MyBookmarks Scraper Helper
+// Service worker for XBookmarkSync Helper
 
 // Listen for external messages from the Web Dashboard (e.g. to link credentials)
 chrome.runtime.onMessageExternal.addListener((request, sender, sendResponse) => {

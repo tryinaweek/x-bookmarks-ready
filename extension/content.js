@@ -205,7 +205,7 @@ function renderInitialState(panel, linked) {
           <p class="my-sync-subtitle">Status: Extension Unlinked</p>
         </div>
       </div>
-      <p class="my-sync-body">Please open your MyBookmarks dashboard page first to automatically link this extension.</p>
+      <p class="my-sync-body">Please open your XBookmarkSync dashboard page first to automatically link this extension.</p>
       <button class="my-sync-btn my-sync-btn-primary" id="openDashboardBtn">Open Dashboard</button>
     `;
     
@@ -225,7 +225,7 @@ function renderInitialState(panel, linked) {
       <div class="my-sync-header">
         <span class="my-sync-icon">🔌</span>
         <div>
-          <h4 class="my-sync-title">MyBookmarks Ready</h4>
+          <h4 class="my-sync-title">XBookmarkSync Ready</h4>
           <p class="my-sync-subtitle">Status: Connected <span class="my-sync-pulse"></span></p>
         </div>
       </div>

@@ -18,7 +18,7 @@ window.addEventListener("message", (event) => {
         if (chrome.runtime.lastError) {
           console.log("Extension connection error:", chrome.runtime.lastError.message);
         } else if (response && response.status === "success") {
-          console.log("MyBookmarks Extension successfully linked via dashboard bridge!");
+          console.log("XBookmarkSync Extension successfully linked via dashboard bridge!");
         }
       });
     }

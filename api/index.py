@@ -163,7 +163,7 @@ def check_startup_error():
         <!DOCTYPE html>
         <html>
         <head>
-            <title>MyBookmarks - Configuration Error</title>
+            <title>XBookmarkSync - Configuration Error</title>
             <style>
                 body {{ font-family: -apple-system, system-ui; padding: 40px; background: #fef2f2; color: #991b1b; line-height: 1.6; }}
                 .card {{ background: white; border: 1px solid #fee2e2; border-radius: 12px; padding: 32px; max-width: 800px; margin: 0 auto; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }}
@@ -405,7 +405,7 @@ def send_email_helper(to_email, subject, body_html):
         "Content-Type": "application/json"
     }
     payload = {
-        "from": "MyBookmarks <no-reply@xbookmarksync.com>",
+        "from": "XBookmarkSync <no-reply@xbookmarksync.com>",
         "to": to_email,
         "subject": subject,
         "html": body_html
@@ -1046,7 +1046,7 @@ The user provided a seed topic: "{seed_topic}"
 Generate ideas that explore DIFFERENT angles on this topic — not 8 versions of the same take.
 Each idea should find a distinct entry point into the subject."""
 
-    prompt = f"""You are the LinkedIn Ideas Engine inside MyBookmarks.
+    prompt = f"""You are the LinkedIn Ideas Engine inside XBookmarkSync.
 
 Your job is to generate exactly 8 strong LinkedIn post ideas for this specific user.
 
@@ -1135,7 +1135,7 @@ def generate_linkedin_brief(username, db_uid, topic, angle):
     if not CLAUDE_API_KEY:
         return None
     context = _gather_linkedin_context(db_uid)
-    prompt = f"""You are the LinkedIn Brief Builder inside MyBookmarks.
+    prompt = f"""You are the LinkedIn Brief Builder inside XBookmarkSync.
 
 Your job is to prepare a high-quality LinkedIn post brief for a founder/operator creator.
 
@@ -1223,7 +1223,7 @@ def generate_linkedin_drafts(username, db_uid, brief):
         return []
     voice = get_voice_context(db_uid) if db_uid else PROFILE_CONTEXT
     brief_text = json.dumps(brief, indent=2)
-    prompt = f"""You are the LinkedIn Writing Engine inside MyBookmarks.
+    prompt = f"""You are the LinkedIn Writing Engine inside XBookmarkSync.
 
 Your job is to write 3 strong LinkedIn post variants for a founder/operator.
 
@@ -3021,7 +3021,7 @@ def admin_email_blast():
             }
             for rec_email in target_emails:
                 payload = {
-                    "from": "MyBookmarks Admin <admin@xbookmarksync.com>",
+                    "from": "XBookmarkSync Admin <admin@xbookmarksync.com>",
                     "to": rec_email,
                     "subject": subject,
                     "html": f"<div style='font-family:sans-serif; line-height:1.6;'>{body.replace(chr(10), '<br>')}</div>"
